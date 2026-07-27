@@ -31,6 +31,10 @@ public class NPCWalker : MonoBehaviour
              "Si es null, se usa la esfera de wanderRadius (comportamiento por defecto).")]
     [SerializeField] private BoxCollider wanderBounds;
 
+    [Tooltip("Radio de la esfera alrededor del NPC para buscar puntos candidatos " +
+             "antes de hacer snap a NavMesh. Usado solo cuando wanderBounds esta asignado.")]
+    [SerializeField] private float wanderSearchRadius = 50f;
+
     public void SetWanderBounds(BoxCollider box) { wanderBounds = box; }
 
     [Header("Quieto (Idle)")]
@@ -232,34 +236,49 @@ public class NPCWalker : MonoBehaviour
 
     // ---------------------------------------------------------
     // Utilidad compartida para buscar un punto valido en el NavMesh.
-    // Si wanderBounds esta asignado, los candidatos se eligen DENTRO
-    // de la caja (no en esfera alrededor del NPC).
+    // Si wanderBounds esta asignado, busca puntos sobre el NavMesh
+    // (esfera alrededor del NPC) y luego valida que esten dentro
+    // de la caja. Asi garantizamos que siempre cae sobre el NavMesh.
     // ---------------------------------------------------------
     private void PickNewDestination(float radius)
     {
         for (int i = 0; i < 10; i++)
         {
-            Vector3 randomPosition;
-            float sampleRadius;
+            Vector3 hitPosition = Vector3.zero;
+            bool found = false;
 
             if (wanderBounds != null)
             {
                 Bounds b = wanderBounds.bounds;
-                randomPosition = new Vector3(
-                    Random.Range(b.min.x, b.max.x),
-                    Random.Range(b.min.y, b.max.y),
-                    Random.Range(b.min.z, b.max.z));
-                sampleRadius = radius;
+
+                // 1) Random en una esfera alrededor del NPC (cerca del NavMesh)
+                Vector3 randomAround = transform.position + Random.insideUnitSphere * wanderSearchRadius;
+
+                // 2) Snap al NavMesh
+                if (!NavMesh.SamplePosition(randomAround, out NavMeshHit hit, 10f, NavMesh.AllAreas))
+                    continue;
+
+                // 3) Validar que el punto del NavMesh este dentro de la caja
+                if (!b.Contains(hit.position))
+                    continue;
+
+                hitPosition = hit.position;
+                found = true;
             }
             else
             {
-                randomPosition = transform.position + Random.insideUnitSphere * radius;
-                sampleRadius = radius;
+                // Sin caja: comportamiento clasico (esfera alrededor del NPC)
+                Vector3 randomAround = transform.position + Random.insideUnitSphere * radius;
+                if (NavMesh.SamplePosition(randomAround, out NavMeshHit hit, radius, NavMesh.AllAreas))
+                {
+                    hitPosition = hit.position;
+                    found = true;
+                }
             }
 
-            if (NavMesh.SamplePosition(randomPosition, out NavMeshHit hit, sampleRadius, NavMesh.AllAreas))
+            if (found)
             {
-                agent.SetDestination(hit.position);
+                agent.SetDestination(hitPosition);
                 return;
             }
         }

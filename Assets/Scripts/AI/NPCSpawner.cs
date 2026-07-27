@@ -14,9 +14,9 @@ public class NPCSpawner : MonoBehaviour
     [SerializeField] private int spawnCount = 30;
     [SerializeField] private float minDistance = 2f;
 
-    [Tooltip("Radio del snap a NavMesh. Grande = mas tolerante con puntos altos en la caja " +
-             "que se proyectan al suelo. Default 30m porque la caja puede tener 100m de alto.")]
-    [SerializeField] private float navMeshSampleRadius = 30f;
+    [Tooltip("Radio de la esfera alrededor del spawner donde se buscan candidatos " +
+             "antes de hacer snap a NavMesh. Grande = mas chances de encontrar NavMesh valido.")]
+    [SerializeField] private float spawnSearchRadius = 50f;
 
     [SerializeField] private int maxAttemptsPerNpc = 40;
 
@@ -105,23 +105,19 @@ public class NPCSpawner : MonoBehaviour
         Bounds b = box.bounds;
         for (int attempt = 0; attempt < maxAttemptsPerNpc; attempt++)
         {
-            // 1) Generar candidato al azar DENTRO de la caja
-            Vector3 candidate = new Vector3(
-                Random.Range(b.min.x, b.max.x),
-                Random.Range(b.min.y, b.max.y),
-                Random.Range(b.min.z, b.max.z));
+            // 1) Random en una esfera alrededor del spawner (no de la caja)
+            //    Esto garantiza que estamos cerca del NavMesh
+            Vector3 randomAroundSpawner = transform.position + Random.insideUnitSphere * spawnSearchRadius;
 
-            // 2) Snap al NavMesh (con radio grande, asi puntos altos caen al suelo)
-            if (!NavMesh.SamplePosition(candidate, out NavMeshHit hit, navMeshSampleRadius, NavMesh.AllAreas))
+            // 2) Snap al NavMesh (casi siempre funciona, está cerca del suelo)
+            if (!NavMesh.SamplePosition(randomAroundSpawner, out NavMeshHit hit, 10f, NavMesh.AllAreas))
                 continue;
 
-            // 3) Verificar que la posición snapped SIGUE dentro de la caja
-            //    (si la caja está a 50m de altura y el NavMesh está abajo, el snap
-            //     podría llevarnos fuera de la caja en X/Z si el NavMesh se acaba)
+            // 3) Validar que el punto del NavMesh este dentro de la caja de contencion
             if (!b.Contains(hit.position))
                 continue;
 
-            // 4) Verificar separación mínima con NPCs ya spawneados
+            // 4) Verificar separacion minima con NPCs ya spawneados
             bool tooClose = false;
             for (int i = 0; i < alreadySpawned.Count; i++)
             {
