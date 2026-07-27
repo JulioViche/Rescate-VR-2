@@ -26,6 +26,13 @@ public class NPCWalker : MonoBehaviour
     [SerializeField] private float wanderRadius = 15f;
     [SerializeField] private float arrivalThreshold = 0.3f;
 
+    [Header("Limite de paseo (opcional)")]
+    [Tooltip("Si esta asignado, los destinos se eligen al azar DENTRO de esta caja. " +
+             "Si es null, se usa la esfera de wanderRadius (comportamiento por defecto).")]
+    [SerializeField] private BoxCollider wanderBounds;
+
+    public void SetWanderBounds(BoxCollider box) { wanderBounds = box; }
+
     [Header("Quieto (Idle)")]
     [SerializeField] private float minIdleTime = 1.5f;
     [SerializeField] private float maxIdleTime = 4f;
@@ -224,15 +231,33 @@ public class NPCWalker : MonoBehaviour
     }
 
     // ---------------------------------------------------------
-    // Utilidad compartida para buscar un punto valido en el NavMesh
+    // Utilidad compartida para buscar un punto valido en el NavMesh.
+    // Si wanderBounds esta asignado, los candidatos se eligen DENTRO
+    // de la caja (no en esfera alrededor del NPC).
     // ---------------------------------------------------------
     private void PickNewDestination(float radius)
     {
         for (int i = 0; i < 10; i++)
         {
-            Vector3 randomPosition = transform.position + Random.insideUnitSphere * radius;
+            Vector3 randomPosition;
+            float sampleRadius;
 
-            if (NavMesh.SamplePosition(randomPosition, out NavMeshHit hit, radius, NavMesh.AllAreas))
+            if (wanderBounds != null)
+            {
+                Bounds b = wanderBounds.bounds;
+                randomPosition = new Vector3(
+                    Random.Range(b.min.x, b.max.x),
+                    Random.Range(b.min.y, b.max.y),
+                    Random.Range(b.min.z, b.max.z));
+                sampleRadius = radius;
+            }
+            else
+            {
+                randomPosition = transform.position + Random.insideUnitSphere * radius;
+                sampleRadius = radius;
+            }
+
+            if (NavMesh.SamplePosition(randomPosition, out NavMeshHit hit, sampleRadius, NavMesh.AllAreas))
             {
                 agent.SetDestination(hit.position);
                 return;
