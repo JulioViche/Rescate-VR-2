@@ -71,11 +71,11 @@ namespace RescateVR.Gameplay
 
                 if (hasGlovesEquipped)
                 {
-                    if (hud != null) hud.ShowWarning("¡Guantes de médico puestos!", 2f);
+                    if (hud != null) hud.ShowWarning("¡BIOSEGURIDAD!", "Guantes de médico equipados.", NotificationType.Info, 2f);
                 }
                 else
                 {
-                    if (hud != null) hud.ShowWarning("¡Guantes de médico retirados!", 2f);
+                    if (hud != null) hud.ShowWarning("¡BIOSEGURIDAD!", "Guantes de médico retirados.", NotificationType.Warning, 2f);
                 }
 
                 currentlyEquippedTool = tool;
@@ -134,13 +134,15 @@ namespace RescateVR.Gameplay
             if (currentlyEquippedTool == MedicalToolType.Gauze)
             {
                 bool success = injury.TryTreatWithGauze(hasGlovesEquipped, out string message);
-                if (hud != null) hud.ShowWarning(message, 3f);
+                string title = success ? "¡HERIDA TRATADA!" : "¡ADVERTENCIA DE BIOSEGURIDAD!";
+                NotificationType type = success ? NotificationType.Info : NotificationType.Danger;
+                if (hud != null) hud.ShowWarning(title, message, type, 3.5f);
             }
             else
             {
                 if (hud != null)
                 {
-                    hud.ShowWarning("Para curar esta herida, selecciona la Gasa/Vendaje en el menú radial (Q).", 3f);
+                    hud.ShowWarning("¡HERRAMIENTA REQUERIDA!", "Para curar esta herida, selecciona la Gasa en el Menú Radial (Q/TAB).", NotificationType.Warning, 3f);
                 }
             }
         }
@@ -150,11 +152,11 @@ namespace RescateVR.Gameplay
             if (currentlyEquippedTool == MedicalToolType.Stethoscope)
             {
                 patient.AuscultateVitals();
-                if (hud != null) hud.ShowWarning("Auscultación realizada: Signos vitales actualizados en HUD.", 2.5f);
+                if (hud != null) hud.ShowWarning("¡AUSCULTACIÓN REALIZADA!", "Signos vitales del paciente actualizados en el HUD.", NotificationType.Info, 2.5f);
             }
             else if (currentlyEquippedTool == MedicalToolType.None)
             {
-                if (hud != null) hud.ShowWarning("Abre el menú radial (tecla Q) para seleccionar una herramienta médica.", 2.5f);
+                if (hud != null) hud.ShowWarning("¡BOTIQUÍN MÉDICO!", "Abre el menú radial (tecla Q o TAB) para seleccionar una herramienta médica.", NotificationType.Warning, 2.5f);
             }
         }
 

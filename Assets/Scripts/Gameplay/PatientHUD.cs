@@ -4,6 +4,13 @@ using UnityEngine.UI;
 
 namespace RescateVR.Gameplay
 {
+    public enum NotificationType
+    {
+        Info,     // Bueno / Éxito (Verde)
+        Warning,  // Advertencia / Información (Amarillo)
+        Danger    // Malo / Error de Bioseguridad (Rojo)
+    }
+
     /// <summary>
     /// Gestiona la Interfaz de Usuario (HUD) flotante durante el rescate:
     /// Nivel de sangre, Temporizador de 5 minutos, Signos Vitales y Paneles de Victoria/Derrota.
@@ -16,6 +23,7 @@ namespace RescateVR.Gameplay
         [Header("UI Nivel de Sangre y Temporizador")]
         public TextMeshProUGUI timerText;
         public Slider bloodSlider;
+        public TextMeshProUGUI bloodText;
         public TextMeshProUGUI bloodPercentageText;
 
         [Header("UI Signos Vitales (Estetoscopio)")]
@@ -26,17 +34,13 @@ namespace RescateVR.Gameplay
         [Header("UI Sliders de Signos Vitales (Opcionales)")]
         [Tooltip("Slider UI para el pulso (BPM)")]
         public Slider heartRateSlider;
-
-        [Tooltip("Slider UI para la respiración (RPM)")]
         public Slider respirationSlider;
-
-        [Tooltip("Slider UI para la presión sistólica (mmHg)")]
         public Slider bloodPressureSlider;
 
-        [Header("Valores Máximos para Sliders de Signos Vitales")]
-        public float maxHeartRateBPM = 200f;
-        public float maxRespirationRPM = 50f;
-        public float maxBloodPressuremmHg = 200f;
+        [Header("Límites de Signos Vitales")]
+        public float maxHeartRateBPM = 180f;
+        public float maxRespirationRPM = 40f;
+        public float maxBloodPressuremmHg = 180f;
 
         [Header("UI Bioseguridad / Herramienta Equipada")]
         [Tooltip("Texto UI que muestra únicamente el nombre de la herramienta equipada")]
@@ -51,7 +55,20 @@ namespace RescateVR.Gameplay
         [Tooltip("Textura / SVG personalizada para el estado 'Sin Herramienta' (Botiquín)")]
         public Texture noToolTexture;
 
+        [Header("UI Advertencias / Warnings")]
+        [Tooltip("GameObject contenedor del panel/caja de Advertencias (Warnings)")]
+        public GameObject warningPanel;
+
+        [Tooltip("Texto UI para el Título de la Advertencia (Warning Title)")]
+        public TextMeshProUGUI warningTitleText;
+
+        [Tooltip("Texto UI para el Mensaje detallado de la Advertencia (Warning Message)")]
         public TextMeshProUGUI warningMessageText;
+
+        [Header("Colores de Alertas (Bueno, Advertencia, Malo)")]
+        public Color infoColor = new Color(0f, 0.95f, 0.4f, 1f);      // Verde (Bueno / Éxito)
+        public Color warningColor = new Color(1f, 0.85f, 0.1f, 1f);   // Amarillo (Advertencia)
+        public Color dangerColor = new Color(1f, 0.25f, 0.25f, 1f);    // Rojo (Malo / Bioseguridad)
 
         [Header("Paneles de Resultado final")]
         public GameObject victoryPanel;
@@ -67,6 +84,12 @@ namespace RescateVR.Gameplay
 
         void Start()
         {
+            // Ocultar panel de advertencias al iniciar
+            if (warningPanel != null)
+            {
+                warningPanel.SetActive(false);
+            }
+
             // Configurar límites mínimos y máximos de los sliders automáticamente
             if (bloodSlider != null) { bloodSlider.minValue = 0f; bloodSlider.maxValue = 1f; }
             if (heartRateSlider != null) { heartRateSlider.minValue = 0f; heartRateSlider.maxValue = maxHeartRateBPM; }
@@ -132,6 +155,8 @@ namespace RescateVR.Gameplay
 
             if (victoryPanel != null) victoryPanel.SetActive(false);
             if (defeatPanel != null) defeatPanel.SetActive(false);
+            if (warningPanel != null) warningPanel.SetActive(false);
+            if (warningTitleText != null) warningTitleText.text = "";
             if (warningMessageText != null) warningMessageText.text = "";
         }
 
@@ -157,11 +182,29 @@ namespace RescateVR.Gameplay
             }
         }
 
+        private bool hasWarnedCriticalBlood = false;
+
         public void UpdateBloodUI(float current, float max)
         {
             float pct = Mathf.Clamp01(current / max);
             if (bloodSlider != null) bloodSlider.value = pct;
             if (bloodPercentageText != null) bloodPercentageText.text = $"{current:F0}%";
+            if (bloodText != null) bloodText.text = $"{current:F0}%";
+
+            // Alerta roja crítica cuando el nivel de sangre cae por debajo del 10%
+            float percentage = (current / max) * 100f;
+            if (percentage <= 10f && percentage > 0f)
+            {
+                if (!hasWarnedCriticalBlood)
+                {
+                    hasWarnedCriticalBlood = true;
+                    ShowWarning("¡PACIENTE EN ESTADO CRÍTICO!", "¡Nivel de sangre menor al 10%! Aplica gasas inmediatamente para detener la hemorragia.", NotificationType.Danger, 4.5f);
+                }
+            }
+            else if (percentage > 15f)
+            {
+                hasWarnedCriticalBlood = false;
+            }
         }
 
         public void UpdateTimerUI(float secondsRemaining)
@@ -252,29 +295,90 @@ namespace RescateVR.Gameplay
             }
         }
 
-        public void ShowWarning(string message, float duration = 2.5f)
+        public void ShowWarning(string title, string message, NotificationType type = NotificationType.Warning, float duration = 3.0f)
         {
+            Color targetColor = warningColor;
+            switch (type)
+            {
+                case NotificationType.Info:
+                    targetColor = infoColor;
+                    break;
+                case NotificationType.Warning:
+                    targetColor = warningColor;
+                    break;
+                case NotificationType.Danger:
+                    targetColor = dangerColor;
+                    break;
+            }
+
+            if (warningTitleText != null)
+            {
+                warningTitleText.text = title;
+                warningTitleText.color = targetColor;
+            }
+
             if (warningMessageText != null)
             {
                 warningMessageText.text = message;
-                CancelInvoke(nameof(ClearWarning));
-                Invoke(nameof(ClearWarning), duration);
+                warningMessageText.color = targetColor;
             }
+
+            if (warningPanel != null)
+            {
+                Image bgImage = warningPanel.GetComponent<Image>();
+                if (bgImage != null)
+                {
+                    Color bgCol = targetColor;
+                    bgCol.a = 0.2f;
+                    bgImage.color = bgCol;
+                }
+                warningPanel.SetActive(true);
+            }
+
+            CancelInvoke(nameof(ClearWarning));
+            Invoke(nameof(ClearWarning), duration);
+        }
+
+        public void ShowWarning(string title, string message, float duration)
+        {
+            ShowWarning(title, message, NotificationType.Warning, duration);
+        }
+
+        public void ShowWarning(string message, float duration = 3.0f)
+        {
+            ShowWarning("¡ADVERTENCIA!", message, NotificationType.Warning, duration);
         }
 
         private void ClearWarning()
         {
+            if (warningPanel != null)
+            {
+                warningPanel.SetActive(false);
+            }
+            if (warningTitleText != null) warningTitleText.text = "";
             if (warningMessageText != null) warningMessageText.text = "";
         }
 
         private void ShowVictoryScreen()
         {
-            if (victoryPanel != null) victoryPanel.SetActive(true);
+            if (victoryPanel != null)
+            {
+                victoryPanel.SetActive(true);
+            }
+            Time.timeScale = 0f;
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
         }
 
         private void ShowDefeatScreen()
         {
-            if (defeatPanel != null) defeatPanel.SetActive(true);
+            if (defeatPanel != null)
+            {
+                defeatPanel.SetActive(true);
+            }
+            Time.timeScale = 0f;
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
         }
     }
 }
