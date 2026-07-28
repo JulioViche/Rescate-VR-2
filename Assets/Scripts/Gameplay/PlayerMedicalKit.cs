@@ -47,7 +47,7 @@ namespace RescateVR.Gameplay
         }
 
         /// <summary>
-        /// Equipa una herramienta médica desde el Menú Radial UI.
+        /// Equipa una herramienta médica desde el Menú Radial UI o botones.
         /// </summary>
         public void EquipTool(MedicalToolType tool)
         {
@@ -60,6 +60,12 @@ namespace RescateVR.Gameplay
             currentlyEquippedTool = tool;
             UpdateHUDToolStatus();
         }
+
+        // Métodos públicos sencillos para vincular en botones UI (OnClick):
+        public void SelectGloves() => EquipTool(MedicalToolType.Gloves);
+        public void SelectGauze() => EquipTool(MedicalToolType.Gauze);
+        public void SelectStethoscope() => EquipTool(MedicalToolType.Stethoscope);
+        public void SelectNone() => EquipTool(MedicalToolType.None);
 
         /// <summary>
         /// Realiza un raycast desde la cámara/cursor para aplicar la herramienta equipada sobre el paciente o sus heridas.

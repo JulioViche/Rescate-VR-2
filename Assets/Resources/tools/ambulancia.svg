@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Luces de emergencia -->
+  <rect x="35" y="15" width="12" height="8" rx="3" fill="#E74C3C"/>
+  <rect x="53" y="15" width="12" height="8" rx="3" fill="#3498DB"/>
+  <!-- Cabina frontal -->
+  <path d="M 60,25 L 85,35 V 70 H 60 Z" fill="#ECF0F1" stroke="#BDC3C7" stroke-width="2"/>
+  <polygon points="65,30 80,38 80,50 65,50" fill="#81D4FA"/> <!-- Ventana -->
+  <!-- Cuerpo de la ambulancia -->
+  <rect x="10" y="23" width="60" height="47" rx="5" fill="#FFFFFF" stroke="#BDC3C7" stroke-width="4"/>
+  <!-- Franja decorativa -->
+  <rect x="12" y="55" width="56" height="5" fill="#E74C3C"/>
+  <!-- Cruz roja lateral -->
+  <rect x="35" y="32" width="6" height="16" rx="1" fill="#E74C3C"/>
+  <rect x="30" y="37" width="16" height="6" rx="1" fill="#E74C3C"/>
+  <!-- Llantas -->
+  <circle cx="25" cy="75" r="12" fill="#2C3E50"/>
+  <circle cx="25" cy="75" r="5" fill="#95A5A6"/>
+  <circle cx="75" cy="75" r="12" fill="#2C3E50"/>
+  <circle cx="75" cy="75" r="5" fill="#95A5A6"/>
+</svg>

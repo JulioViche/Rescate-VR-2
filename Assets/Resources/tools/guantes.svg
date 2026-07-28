@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Muñeca / Borde del guante -->
+  <rect x="30" y="75" width="40" height="15" rx="5" fill="#1565C0"/>
+  <!-- Mano en color azul quirúrgico -->
+  <path d="M 32,75 L 30,45 Q 29,35 34,35 Q 39,35 40,45 
+           L 41,25 Q 41,15 46,15 Q 51,15 52,25 
+           L 53,20 Q 53,10 58,10 Q 63,10 64,20 
+           L 64,30 Q 64,20 69,20 Q 74,20 74,35 
+           L 72,75 Z" 
+        fill="#1E88E5" stroke="#1565C0" stroke-width="4" stroke-linejoin="round"/>
+  <!-- Brillo (Smoothness visual) -->
+  <path d="M 36,45 L 36,70 M 46,25 L 46,70 M 58,20 L 58,70" fill="none" stroke="#64B5F6" stroke-width="2" stroke-linecap="round"/>
+</svg>

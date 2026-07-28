@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Sombra base -->
+  <ellipse cx="50" cy="80" rx="35" ry="10" fill="#E0E0E0"/>
+  <!-- Cuerpo del rollo de venda -->
+  <rect x="25" y="30" width="50" height="50" rx="8" fill="#FAFAFA" stroke="#BDC3C7" stroke-width="4"/>
+  <!-- Espiral superior del rollo -->
+  <ellipse cx="50" cy="30" rx="25" ry="10" fill="#FFFFFF" stroke="#BDC3C7" stroke-width="4"/>
+  <path d="M 40,30 Q 50,35 60,30" fill="none" stroke="#E0E0E0" stroke-width="2"/>
+  <!-- Líneas de textura de la venda -->
+  <line x1="25" y1="45" x2="75" y2="45" stroke="#ECF0F1" stroke-width="3"/>
+  <line x1="25" y1="60" x2="75" y2="60" stroke="#ECF0F1" stroke-width="3"/>
+  <!-- Trozo suelto cayendo -->
+  <path d="M 75,50 Q 85,60 80,85 L 65,80 Q 75,60 75,50" fill="#FAFAFA" stroke="#BDC3C7" stroke-width="3"/>
+</svg>
