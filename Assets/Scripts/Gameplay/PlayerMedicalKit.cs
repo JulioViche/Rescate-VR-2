@@ -52,11 +52,54 @@ namespace RescateVR.Gameplay
 
         void Update()
         {
+            // Inspección visual/feedback en tiempo real al mirar heridas o al paciente
+            UpdateHoverInspection();
+
             // Interacción con clic izquierdo (o trigger de VR)
             if (Input.GetMouseButtonDown(0))
             {
                 PerformInteraction();
             }
+        }
+
+        private void UpdateHoverInspection()
+        {
+            Ray ray;
+            if (playerCamera != null)
+            {
+                ray = playerCamera.ScreenPointToRay(new Vector3(Screen.width / 2f, Screen.height / 2f, 0f));
+            }
+            else
+            {
+                ray = new Ray(transform.position, transform.forward);
+            }
+
+            if (Physics.Raycast(ray, out RaycastHit hit, interactionDistance, interactionLayerMask))
+            {
+                // 1. Verificar si está apuntando a una Herida (InjuryHandler)
+                InjuryHandler injury = hit.collider.GetComponentInParent<InjuryHandler>();
+                if (injury != null)
+                {
+                    string prompt = injury.isTreated
+                        ? $"[ Herida Tratada: {injury.injuryName} (Sangrado: 0%) ]"
+                        : $"[ {injury.injuryName} - Sangrado: {injury.bleedingLevel:F0}% ]\n(Haz Clic con Gasa para curar)";
+
+                    if (hud != null) hud.UpdateInteractionPrompt(prompt);
+                    return;
+                }
+
+                // 2. Verificar si está apuntando al Paciente (PatientState)
+                PatientState patient = hit.collider.GetComponentInParent<PatientState>();
+                if (patient != null)
+                {
+                    string prompt = "[ Paciente Herido ]\n(Haz Clic con Estetoscopio para auscultar signos vitales)";
+                    if (hud != null) hud.UpdateInteractionPrompt(prompt);
+                    return;
+                }
+            }
+
+            // Ocultar el texto de inspección al dejar de mirar el objetivo
+            if (hud != null) hud.UpdateInteractionPrompt("");
         }
 
         /// <summary>

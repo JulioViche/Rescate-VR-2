@@ -315,7 +315,12 @@ public class NPCWalker : MonoBehaviour
         if (animator == null) return;
 
         float speed = agent.velocity.magnitude;
-        animator.SetFloat(animatorSpeedParam, speed);
+
+        // Solo intentar modificar 'Speed' si el parámetro float existe en el Animator Controller
+        if (HasAnimatorParameter(animator, animatorSpeedParam))
+        {
+            animator.SetFloat(animatorSpeedParam, speed);
+        }
 
         // Soporte dinamico para animadores con parametros booleanos (IsWalking, IsPanic)
         if (HasAnimatorParameter(animator, "IsWalking"))

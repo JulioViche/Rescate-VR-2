@@ -153,6 +153,15 @@ namespace RescateVR.UI
         /// </summary>
         public void SetBrightness(float value)
         {
+            if (brightnessOverlay == null)
+            {
+                GameObject overlayGO = GameObject.Find("BrightnessOverlay");
+                if (overlayGO != null)
+                {
+                    brightnessOverlay = overlayGO.GetComponent<Image>();
+                }
+            }
+
             if (brightnessOverlay != null)
             {
                 float alpha = Mathf.Clamp01(1f - value) * 0.7f;

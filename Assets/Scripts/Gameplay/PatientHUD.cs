@@ -55,6 +55,10 @@ namespace RescateVR.Gameplay
         [Tooltip("Textura / SVG personalizada para el estado 'Sin Herramienta' (Botiquín)")]
         public Texture noToolTexture;
 
+        [Header("UI Feedback de Inspección en Tiempo Real")]
+        [Tooltip("Texto UI TMP en pantalla que muestra qué herida o parte del cuerpo estás mirando")]
+        public TextMeshProUGUI interactionPromptText;
+
         [Header("UI Advertencias / Warnings")]
         [Tooltip("GameObject contenedor del panel/caja de Advertencias (Warnings)")]
         public GameObject warningPanel;
@@ -347,6 +351,18 @@ namespace RescateVR.Gameplay
         public void ShowWarning(string message, float duration = 3.0f)
         {
             ShowWarning("¡ADVERTENCIA!", message, NotificationType.Warning, duration);
+        }
+
+        /// <summary>
+        /// Actualiza el texto de inspección/hover en tiempo real al mirar una herida o al paciente.
+        /// </summary>
+        public void UpdateInteractionPrompt(string text)
+        {
+            if (interactionPromptText != null)
+            {
+                interactionPromptText.text = text;
+                interactionPromptText.gameObject.SetActive(!string.IsNullOrEmpty(text));
+            }
         }
 
         private void ClearWarning()
