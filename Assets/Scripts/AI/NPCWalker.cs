@@ -50,9 +50,18 @@ public class NPCWalker : MonoBehaviour
     [SerializeField] private float panicWanderRadius = 10f;  // radio de busqueda de nuevo punto en panico
     [SerializeField] private float panicDuration = 6f;       // cuanto dura el panico si no se corta antes
 
-    [Header("Referencias opcionales")]
-    [SerializeField] private Animator animator;              // opcional, puede quedar vacio
+    [Header("Referencias y Nombres de Animaciones")]
+    [SerializeField] private Animator animator;              // opcional, se auto-busca si esta vacio
     [SerializeField] private string animatorSpeedParam = "Speed";
+
+    [Tooltip("Nombre del estado de caminata en el Animator (ej: locom_m_basicWalk_30f, locom_f_basicWalk_30f o Walk)")]
+    [SerializeField] private string walkStateName = "locom_m_basicWalk_30f";
+
+    [Tooltip("Nombre del estado quieto/idle en el Animator (ej: idle_m_1_200f, idle_f_1_150f o Idle)")]
+    [SerializeField] private string idleStateName = "idle_m_1_200f";
+
+    [Tooltip("Nombre del estado de pánico/carrera en el Animator (ej: locom_m_running_20f o Run)")]
+    [SerializeField] private string panicStateName = "locom_m_running_20f";
 
     private NavMeshAgent agent;
     private float stateTimer;
@@ -114,6 +123,11 @@ public class NPCWalker : MonoBehaviour
 
         stateTimer = Random.Range(minIdleTime, maxIdleTime);
         PickIdleLookTarget();
+
+        if (animator != null && !string.IsNullOrEmpty(idleStateName) && HasAnimatorState(idleStateName))
+        {
+            animator.CrossFade(idleStateName, 0.2f);
+        }
     }
 
     private void TickIdle()
@@ -175,6 +189,11 @@ public class NPCWalker : MonoBehaviour
         agent.acceleration = walkAcceleration;
         agent.stoppingDistance = 0f;
 
+        if (animator != null && !string.IsNullOrEmpty(walkStateName) && HasAnimatorState(walkStateName))
+        {
+            animator.CrossFade(walkStateName, 0.2f);
+        }
+
         PickNewDestination(wanderRadius);
     }
 
@@ -208,6 +227,11 @@ public class NPCWalker : MonoBehaviour
         agent.angularSpeed = panicAngularSpeed;
         agent.acceleration = panicAcceleration;
         agent.stoppingDistance = 0f;
+
+        if (animator != null && !string.IsNullOrEmpty(panicStateName) && HasAnimatorState(panicStateName))
+        {
+            animator.CrossFade(panicStateName, 0.2f);
+        }
 
         panicTimeLeft = panicDuration;
         stateTimer = Random.Range(panicRedirectMin, panicRedirectMax);
@@ -289,7 +313,36 @@ public class NPCWalker : MonoBehaviour
     private void UpdateAnimator()
     {
         if (animator == null) return;
-        animator.SetFloat(animatorSpeedParam, agent.velocity.magnitude);
+
+        float speed = agent.velocity.magnitude;
+        animator.SetFloat(animatorSpeedParam, speed);
+
+        // Soporte dinamico para animadores con parametros booleanos (IsWalking, IsPanic)
+        if (HasAnimatorParameter(animator, "IsWalking"))
+        {
+            animator.SetBool("IsWalking", currentState == NPCState.Walking);
+        }
+
+        if (HasAnimatorParameter(animator, "IsPanic"))
+        {
+            animator.SetBool("IsPanic", currentState == NPCState.Panic);
+        }
+    }
+
+    private bool HasAnimatorParameter(Animator anim, string paramName)
+    {
+        if (anim == null || string.IsNullOrEmpty(paramName)) return false;
+        foreach (AnimatorControllerParameter param in anim.parameters)
+        {
+            if (param.name == paramName) return true;
+        }
+        return false;
+    }
+
+    private bool HasAnimatorState(string stateName)
+    {
+        if (animator == null || string.IsNullOrEmpty(stateName)) return false;
+        return animator.HasState(0, Animator.StringToHash(stateName));
     }
 
     private void OnDrawGizmosSelected()

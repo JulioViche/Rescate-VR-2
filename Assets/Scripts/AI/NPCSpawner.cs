@@ -5,9 +5,12 @@ using UnityEngine.AI;
 [RequireComponent(typeof(BoxCollider))]
 public class NPCSpawner : MonoBehaviour
 {
-    [Header("Prefab (auto-load)")]
-    [Tooltip("Si esta vacio, el spawner carga el prefab desde Resources/npc placeholder.prefab " +
-             "con Resources.Load. Si lo asignas a mano, usa esa referencia en su lugar.")]
+    [Header("Lista de Prefabs (Hombre, Mujer, Niños, Ancianos)")]
+    [Tooltip("Lista de prefabs de Denys Almaral o cualquier NPC. Se elegirá uno al azar para cada spawn.")]
+    [SerializeField] private GameObject[] npcPrefabs;
+
+    [Tooltip("Prefab individual de respaldo (si la lista esta vacia). " +
+             "Si esta vacio, se carga desde Resources/npc placeholder.")]
     [SerializeField] private GameObject npcPrefab;
 
     [Header("Spawn")]
@@ -45,13 +48,6 @@ public class NPCSpawner : MonoBehaviour
 
     public void SpawnAll()
     {
-        GameObject prefab = ResolvePrefab();
-        if (prefab == null)
-        {
-            Debug.LogError("NPCSpawner: no se encontro el prefab. Asignalo a mano o pon uno en Assets/Resources/ llamado 'npc placeholder'.", this);
-            return;
-        }
-
         if (npcParent == null)
         {
             Debug.LogError("NPCSpawner: no se pudo crear ni encontrar el GameObject padre de NPCs.", this);
@@ -68,12 +64,24 @@ public class NPCSpawner : MonoBehaviour
                 continue;
             }
 
+            GameObject prefabToSpawn = GetRandomPrefab();
+            if (prefabToSpawn == null)
+            {
+                Debug.LogError("NPCSpawner: no se encontro ningun prefab valido para instanciar.", this);
+                break;
+            }
+
             Quaternion rot = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
-            GameObject npc = Instantiate(prefab, point, rot, npcParent);
+            GameObject npc = Instantiate(prefabToSpawn, point, rot, npcParent);
             npc.name = $"{npcParentName}_{i:D2}";
 
+            // Asegurar que el NPC tenga el componente NPCWalker para caminar y animarse
             NPCWalker walker = npc.GetComponent<NPCWalker>();
-            if (walker != null) walker.SetWanderBounds(box);
+            if (walker == null)
+            {
+                walker = npc.AddComponent<NPCWalker>();
+            }
+            walker.SetWanderBounds(box);
 
             usedPositions.Add(point);
             spawned.Add(npc);
@@ -92,6 +100,23 @@ public class NPCSpawner : MonoBehaviour
         GameObject go = new GameObject(npcParentName);
         Debug.Log($"NPCSpawner: creado GameObject padre '{npcParentName}' en la raiz.", this);
         return go.transform;
+    }
+
+    private GameObject GetRandomPrefab()
+    {
+        if (npcPrefabs != null && npcPrefabs.Length > 0)
+        {
+            List<GameObject> validPrefabs = new List<GameObject>();
+            foreach (var p in npcPrefabs)
+            {
+                if (p != null) validPrefabs.Add(p);
+            }
+            if (validPrefabs.Count > 0)
+            {
+                return validPrefabs[Random.Range(0, validPrefabs.Count)];
+            }
+        }
+        return ResolvePrefab();
     }
 
     private GameObject ResolvePrefab()
