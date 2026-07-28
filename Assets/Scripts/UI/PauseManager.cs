@@ -51,6 +51,12 @@ public class PauseManager : MonoBehaviour
 
     void Update()
     {
+        // Si el menú de Opciones está abierto en pantalla, dejar que OptionsMenuManager controle la tecla Escape
+        if (optionsMenuPanel != null && optionsMenuPanel.activeInHierarchy)
+        {
+            return;
+        }
+
         // Detección de tecla P o Escape (Input Viejo)
         bool pOldInput = Input.GetKeyDown(pauseKey) || Input.GetKeyDown(KeyCode.Escape);
 
@@ -185,22 +191,88 @@ public class PauseManager : MonoBehaviour
         }
     }
 
-    public void OnResume() => TogglePause();
+    [Tooltip("Asigna aquí el GameObject del 'OptionsMenuPanel' para abrirlo desde la pausa")]
+    public GameObject optionsMenuPanel;
+
+    public void ResumeGame()
+    {
+        isPaused = false;
+        Time.timeScale = 1f;
+        SetMenuVisible(false);
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
+    }
+
+    public void ShowPauseMenu()
+    {
+        isPaused = true;
+        Time.timeScale = 0f;
+        SetMenuVisible(true);
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+    }
+
+    public void OnResume()
+    {
+        ResumeGame();
+    }
 
     public void OnRestart()
     {
+        isPaused = false;
         Time.timeScale = 1f;
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
     public void OnOptions()
     {
-        Debug.Log("Opciones - próximamente");
+        // Ocultar la UI de pausa pero mantener el filtro oscuro en pantalla
+        if (pauseCanvas != null)
+        {
+            pauseCanvas.SetActive(false);
+        }
+
+        if (filterOverlay != null)
+        {
+            filterOverlay.SetActive(true);
+        }
+
+        if (optionsMenuPanel == null)
+        {
+            RescateVR.UI.OptionsMenuManager optionsManager = Object.FindFirstObjectByType<RescateVR.UI.OptionsMenuManager>(FindObjectsInactive.Include);
+            if (optionsManager != null)
+            {
+                optionsMenuPanel = optionsManager.gameObject;
+            }
+        }
+
+        if (optionsMenuPanel != null)
+        {
+            optionsMenuPanel.SetActive(true);
+
+            // Asegurar que Opciones reciba clics y hovers del ratón
+            CanvasGroup cg = optionsMenuPanel.GetComponent<CanvasGroup>();
+            if (cg != null)
+            {
+                cg.alpha = 1f;
+                cg.blocksRaycasts = true;
+                cg.interactable = true;
+            }
+        }
     }
 
     public void OnMainMenu()
     {
+        isPaused = false;
         Time.timeScale = 1f;
-        SceneManager.LoadScene("MainMenu");
+        if (Application.CanStreamedLevelBeLoaded("MainMenu"))
+        {
+            SceneManager.LoadScene("MainMenu");
+        }
+        else
+        {
+            Debug.LogWarning("[PauseManager] La escena 'MainMenu' no está agregada en Build Settings. Cargando escena 0 por defecto.");
+            SceneManager.LoadScene(0);
+        }
     }
 }

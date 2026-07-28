@@ -99,34 +99,29 @@ namespace RescateVR.Gameplay
 
         void Update()
         {
+            // Si el juego entra en pausa mientras el Menú Radial está abierto, cancelarlo inmediatamente
+            if (Time.timeScale == 0f)
+            {
+                if (isOpen)
+                {
+                    CloseMenu();
+                }
+                return;
+            }
+
             // 1. Detección de Apertura (Presionar Q o Tab)
-            if (IsToggleKeyPressedThisFrame())
+            if (IsToggleKeyPressedThisFrame() && !isOpen)
             {
                 OpenMenu();
             }
 
-            // 2. Detección de Cierre (Soltar Q o Tab)
-            if (IsToggleKeyReleasedThisFrame() && isOpen)
-            {
-                SelectCurrentTool();
-                CloseMenu();
-            }
-
-            // 3. Mientras el menú esté abierto, calcular dirección del ratón y permitir clic directo
+            // 2. Mientras el menú esté abierto, calcular dirección y equipar herramienta al SOLTAR la tecla o hacer clic
             if (isOpen)
             {
                 CalculateDirection();
 
-                // Si el jugador hace clic izquierdo sobre una sección del menú radial
-                if (Input.GetMouseButtonDown(0))
-                {
-                    SelectCurrentTool();
-                    CloseMenu();
-                    return;
-                }
-
-                // Si por alguna razón la tecla ya no está presionada, cerrar
-                if (!IsToggleKeyHeld() && !Input.GetMouseButton(0))
+                // Al SOLTAR Q / Tab O hacer clic izquierdo: Equipar la herramienta resaltada y cerrar
+                if (IsToggleKeyReleasedThisFrame() || Input.GetMouseButtonDown(0))
                 {
                     SelectCurrentTool();
                     CloseMenu();
@@ -152,17 +147,17 @@ namespace RescateVR.Gameplay
 
         private void SetPanelVisibility(bool visible)
         {
+            if (canvasGroup == null && radialPanel != null)
+            {
+                canvasGroup = radialPanel.GetComponent<CanvasGroup>();
+                if (canvasGroup == null) canvasGroup = radialPanel.AddComponent<CanvasGroup>();
+            }
+
             if (canvasGroup != null)
             {
                 canvasGroup.alpha = visible ? 1f : 0f;
                 canvasGroup.blocksRaycasts = visible;
                 canvasGroup.interactable = visible;
-            }
-
-            // Si el script no está en el mismo GameObject del panel, podemos alternar SetActive
-            if (radialPanel != null && radialPanel != this.gameObject)
-            {
-                radialPanel.SetActive(visible);
             }
         }
 
