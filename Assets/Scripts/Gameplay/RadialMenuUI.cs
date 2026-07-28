@@ -24,7 +24,13 @@ namespace RescateVR.Gameplay
         public TextMeshProUGUI bottomText;  // Sur: Estetoscopio
         public TextMeshProUGUI leftText;    // Oeste: Guardar Herramienta
 
-        [Header("Iconos/Imágenes de las 4 Secciones (Opcionales)")]
+        [Header("Iconos/Imágenes SVG de las 4 Secciones (RawImage)")]
+        public RawImage topRawImage;       // Norte: guantes.svg
+        public RawImage rightRawImage;     // Este: gasa.svg
+        public RawImage bottomRawImage;    // Sur: estetoscopio.svg
+        public RawImage leftRawImage;      // Oeste: botiquin.svg
+
+        [Header("Iconos/Imágenes de las 4 Secciones (Image Opcional)")]
         public Image topIconImage;     // Norte: Guantes
         public Image rightIconImage;   // Este: Gasa
         public Image bottomIconImage;  // Sur: Estetoscopio
@@ -56,8 +62,39 @@ namespace RescateVR.Gameplay
                 medicalKit = Object.FindObjectOfType<PlayerMedicalKit>();
             }
 
+            LoadResourceIconsIfAvailable();
+
             // Ocultar la UI al iniciar el juego
             SetPanelVisibility(false);
+        }
+
+        private void LoadResourceIconsIfAvailable()
+        {
+            // Cargar Texturas SVG para RawImage (Norte: Estetoscopio, Este: Guantes, Oeste: Gasa, Sur: Botiquín)
+            if (topRawImage != null && topRawImage.texture == null)
+                topRawImage.texture = Resources.Load<Texture>("tools/estetoscopio");
+
+            if (rightRawImage != null && rightRawImage.texture == null)
+                rightRawImage.texture = Resources.Load<Texture>("tools/guantes");
+
+            if (leftRawImage != null && leftRawImage.texture == null)
+                leftRawImage.texture = Resources.Load<Texture>("tools/gasa");
+
+            if (bottomRawImage != null && bottomRawImage.texture == null)
+                bottomRawImage.texture = Resources.Load<Texture>("tools/botiquin");
+
+            // Cargar Sprites para Image (si aplica)
+            if (topIconImage != null && topIconImage.sprite == null)
+                topIconImage.sprite = Resources.Load<Sprite>("tools/estetoscopio");
+
+            if (rightIconImage != null && rightIconImage.sprite == null)
+                rightIconImage.sprite = Resources.Load<Sprite>("tools/guantes");
+
+            if (leftIconImage != null && leftIconImage.sprite == null)
+                leftIconImage.sprite = Resources.Load<Sprite>("tools/gasa");
+
+            if (bottomIconImage != null && bottomIconImage.sprite == null)
+                bottomIconImage.sprite = Resources.Load<Sprite>("tools/botiquin");
         }
 
         void Update()
@@ -75,10 +112,18 @@ namespace RescateVR.Gameplay
                 CloseMenu();
             }
 
-            // 3. Mientras el menú esté abierto, calcular dirección del ratón
+            // 3. Mientras el menú esté abierto, calcular dirección del ratón y permitir clic directo
             if (isOpen)
             {
                 CalculateDirection();
+
+                // Si el jugador hace clic izquierdo sobre una sección del menú radial
+                if (Input.GetMouseButtonDown(0))
+                {
+                    SelectCurrentTool();
+                    CloseMenu();
+                    return;
+                }
 
                 // Si por alguna razón la tecla ya no está presionada, cerrar
                 if (!IsToggleKeyHeld() && !Input.GetMouseButton(0))
@@ -192,22 +237,22 @@ namespace RescateVR.Gameplay
             float angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
             if (angle < 0) angle += 360f;
 
-            // Selección direccional por cuadrantes (Norte, Este, Sur, Oeste)
+            // Selección direccional por cuadrantes (Norte: Estetoscopio, Este: Guantes, Oeste: Gasa, Sur: Botiquín)
             if (angle >= 45f && angle < 135f)
             {
-                currentHoverTool = MedicalToolType.Gloves;      // Norte: Guantes
+                currentHoverTool = MedicalToolType.Stethoscope; // Norte: Estetoscopio
             }
             else if (angle >= 315f || angle < 45f)
             {
-                currentHoverTool = MedicalToolType.Gauze;       // Este: Gasa
+                currentHoverTool = MedicalToolType.Gloves;      // Este: Guantes
             }
             else if (angle >= 225f && angle < 315f)
             {
-                currentHoverTool = MedicalToolType.Stethoscope; // Sur: Estetoscopio
+                currentHoverTool = MedicalToolType.None;        // Sur: Botiquín / Guardar
             }
             else
             {
-                currentHoverTool = MedicalToolType.None;        // Oeste: Guardar
+                currentHoverTool = MedicalToolType.Gauze;       // Oeste: Gasa
             }
 
             HighlightSection(currentHoverTool);
@@ -215,15 +260,27 @@ namespace RescateVR.Gameplay
 
         private void HighlightSection(MedicalToolType tool)
         {
-            SetTextHighlight(topText, tool == MedicalToolType.Gloves);
-            SetTextHighlight(rightText, tool == MedicalToolType.Gauze);
-            SetTextHighlight(bottomText, tool == MedicalToolType.Stethoscope);
-            SetTextHighlight(leftText, tool == MedicalToolType.None);
+            SetTextHighlight(topText, tool == MedicalToolType.Stethoscope);
+            SetTextHighlight(rightText, tool == MedicalToolType.Gloves);
+            SetTextHighlight(leftText, tool == MedicalToolType.Gauze);
+            SetTextHighlight(bottomText, tool == MedicalToolType.None);
 
-            SetIconHighlight(topIconImage, tool == MedicalToolType.Gloves);
-            SetIconHighlight(rightIconImage, tool == MedicalToolType.Gauze);
-            SetIconHighlight(bottomIconImage, tool == MedicalToolType.Stethoscope);
-            SetIconHighlight(leftIconImage, tool == MedicalToolType.None);
+            SetRawIconHighlight(topRawImage, tool == MedicalToolType.Stethoscope);
+            SetRawIconHighlight(rightRawImage, tool == MedicalToolType.Gloves);
+            SetRawIconHighlight(leftRawImage, tool == MedicalToolType.Gauze);
+            SetRawIconHighlight(bottomRawImage, tool == MedicalToolType.None);
+
+            SetIconHighlight(topIconImage, tool == MedicalToolType.Stethoscope);
+            SetIconHighlight(rightIconImage, tool == MedicalToolType.Gloves);
+            SetIconHighlight(leftIconImage, tool == MedicalToolType.Gauze);
+            SetIconHighlight(bottomIconImage, tool == MedicalToolType.None);
+        }
+
+        private void SetRawIconHighlight(RawImage rawImg, bool isHighlighted)
+        {
+            if (rawImg == null) return;
+            rawImg.color = isHighlighted ? Color.yellow : Color.white;
+            rawImg.transform.localScale = isHighlighted ? new Vector3(1.2f, 1.2f, 1f) : Vector3.one;
         }
 
         private void SetTextHighlight(TextMeshProUGUI text, bool isHighlighted)
@@ -242,9 +299,18 @@ namespace RescateVR.Gameplay
 
         private void SelectCurrentTool()
         {
+            if (medicalKit == null)
+            {
+                medicalKit = Object.FindObjectOfType<PlayerMedicalKit>();
+            }
+
             if (medicalKit != null)
             {
                 medicalKit.EquipTool(currentHoverTool);
+            }
+            else
+            {
+                Debug.LogWarning("[RadialMenuUI] No se encontró el componente PlayerMedicalKit en la escena.");
             }
         }
     }

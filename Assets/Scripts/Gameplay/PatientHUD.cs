@@ -39,7 +39,18 @@ namespace RescateVR.Gameplay
         public float maxBloodPressuremmHg = 200f;
 
         [Header("UI Bioseguridad / Herramienta Equipada")]
+        [Tooltip("Texto UI que muestra únicamente el nombre de la herramienta equipada")]
         public TextMeshProUGUI equippedToolText;
+
+        [Tooltip("Texto UI que muestra únicamente el estado independiente de los guantes ([Guantes Puestos] / [Sin Guantes])")]
+        public TextMeshProUGUI glovesStatusText;
+
+        [Tooltip("RawImage UI para mostrar el icono SVG/Textura de la herramienta equipada en el HUD")]
+        public RawImage equippedToolImage;
+
+        [Tooltip("Textura / SVG personalizada para el estado 'Sin Herramienta' (Botiquín)")]
+        public Texture noToolTexture;
+
         public TextMeshProUGUI warningMessageText;
 
         [Header("Paneles de Resultado final")]
@@ -68,6 +79,13 @@ namespace RescateVR.Gameplay
                 UpdateBloodUI(patientState.currentBlood, patientState.maxBlood);
                 UpdateTimerUI(patientState.timeRemaining);
                 UpdateVitalsUI(patientState.heartRateBPM, patientState.respirationRPM, patientState.systolicBP, patientState.diastolicBP);
+            }
+
+            // Forzar actualización inicial de la herramienta equipada al iniciar
+            PlayerMedicalKit kit = Object.FindObjectOfType<PlayerMedicalKit>();
+            if (kit != null)
+            {
+                UpdateEquippedToolUI(kit.currentlyEquippedTool, kit.hasGlovesEquipped);
             }
         }
 
@@ -167,12 +185,70 @@ namespace RescateVR.Gameplay
             if (bloodPressureSlider != null) bloodPressureSlider.value = Mathf.Clamp(sys, 0f, maxBloodPressuremmHg);
         }
 
-        public void UpdateEquippedToolUI(string toolName, bool hasGloves)
+        public void UpdateEquippedToolUI(MedicalToolType tool, bool hasGloves)
         {
+            // 1. Actualizar Texto de la Herramienta Equipada (Solo el nombre)
             if (equippedToolText != null)
             {
-                string glovesStatus = hasGloves ? "<color=green>[Guantes Puestos]</color>" : "<color=red>[Sin Guantes]</color>";
-                equippedToolText.text = $"Herramienta: {toolName} {glovesStatus}";
+                equippedToolText.text = GetToolNameString(tool);
+            }
+
+            // 2. Actualizar Texto de Estado de Guantes ([Guantes Puestos] / [Sin Guantes])
+            if (glovesStatusText != null)
+            {
+                glovesStatusText.text = hasGloves ? "<color=green>[Guantes Puestos]</color>" : "<color=red>[Sin Guantes]</color>";
+            }
+
+            // 3. Actualizar RawImage (SVG / Textura) en el HUD
+            if (equippedToolImage != null)
+            {
+                Texture iconTexture = GetToolTexture(tool);
+                if (iconTexture != null)
+                {
+                    equippedToolImage.texture = iconTexture;
+                    equippedToolImage.enabled = true;
+                }
+                else
+                {
+                    equippedToolImage.enabled = false;
+                }
+            }
+        }
+
+        private string GetToolNameString(MedicalToolType tool)
+        {
+            switch (tool)
+            {
+                case MedicalToolType.Gloves: return "Guantes Médicos";
+                case MedicalToolType.Gauze: return "Gasa / Vendaje";
+                case MedicalToolType.Stethoscope: return "Estetoscopio";
+                case MedicalToolType.Flashlight: return "Linterna";
+                default: return "Seleccionar Herramienta";
+            }
+        }
+
+        private Texture GetToolTexture(MedicalToolType tool)
+        {
+            switch (tool)
+            {
+                case MedicalToolType.Gloves: return Resources.Load<Texture>("tools/guantes");
+                case MedicalToolType.Gauze: return Resources.Load<Texture>("tools/gasa");
+                case MedicalToolType.Stethoscope: return Resources.Load<Texture>("tools/estetoscopio");
+                case MedicalToolType.None: return noToolTexture != null ? noToolTexture : Resources.Load<Texture>("tools/botiquin");
+                default: return noToolTexture != null ? noToolTexture : Resources.Load<Texture>("tools/botiquin");
+            }
+        }
+
+        private Sprite GetToolSprite(MedicalToolType tool)
+        {
+            switch (tool)
+            {
+                case MedicalToolType.Gloves: return Resources.Load<Sprite>("tools/guantes");
+                case MedicalToolType.Gauze: return Resources.Load<Sprite>("tools/gasa");
+                case MedicalToolType.Stethoscope: return Resources.Load<Sprite>("tools/estetoscopio");
+                case MedicalToolType.Flashlight: return Resources.Load<Sprite>("tools/botiquin");
+                case MedicalToolType.None: return Resources.Load<Sprite>("tools/botiquin");
+                default: return null;
             }
         }
 

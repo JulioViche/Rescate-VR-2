@@ -27,11 +27,24 @@ namespace RescateVR.Gameplay
         public float interactionDistance = 3.5f;
         public LayerMask interactionLayerMask = ~0; // Todo por defecto
 
+        void Awake()
+        {
+            if (hud == null)
+            {
+                hud = Object.FindObjectOfType<PatientHUD>();
+            }
+        }
+
         void Start()
         {
             if (playerCamera == null)
             {
                 playerCamera = Camera.main;
+            }
+
+            if (hud == null)
+            {
+                hud = Object.FindObjectOfType<PatientHUD>();
             }
 
             UpdateHUDToolStatus();
@@ -53,11 +66,25 @@ namespace RescateVR.Gameplay
         {
             if (tool == MedicalToolType.Gloves)
             {
-                hasGlovesEquipped = true;
-                if (hud != null) hud.ShowWarning("¡Guantes de médico puestos correctamente!", 2f);
+                // Alternar estado (Toggle: Poner / Quitar guantes)
+                hasGlovesEquipped = !hasGlovesEquipped;
+
+                if (hasGlovesEquipped)
+                {
+                    if (hud != null) hud.ShowWarning("¡Guantes de médico puestos!", 2f);
+                }
+                else
+                {
+                    if (hud != null) hud.ShowWarning("¡Guantes de médico retirados!", 2f);
+                }
+
+                currentlyEquippedTool = tool;
+            }
+            else
+            {
+                currentlyEquippedTool = tool;
             }
 
-            currentlyEquippedTool = tool;
             UpdateHUDToolStatus();
         }
 
@@ -135,7 +162,7 @@ namespace RescateVR.Gameplay
         {
             if (hud != null)
             {
-                hud.UpdateEquippedToolUI(currentlyEquippedTool.ToString(), hasGlovesEquipped);
+                hud.UpdateEquippedToolUI(currentlyEquippedTool, hasGlovesEquipped);
             }
         }
     }
