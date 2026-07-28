@@ -11,6 +11,9 @@ public class PauseManager : MonoBehaviour
     [Tooltip("Asigna aquí el objeto 'Filter' (overlay de fondo oscuro, opcional)")]
     public GameObject filterOverlay;
 
+    [Tooltip("Asigna aquí el objeto del PatientHUD para ocultarlo manualmente al pausar")]
+    public RescateVR.Gameplay.PatientHUD patientHUD;
+
     [Header("Settings")]
     [Tooltip("Tecla para pausar/reanudar (Old Input System). Default: P")]
     public KeyCode pauseKey = KeyCode.P;
@@ -128,6 +131,17 @@ public class PauseManager : MonoBehaviour
                 filterCg.blocksRaycasts = visible;
                 filterCg.interactable = visible;
             }
+        }
+
+        // Ocultar / Mostrar el PatientHUD del rescate cuando se abre/cierra la pausa
+        if (patientHUD == null)
+        {
+            patientHUD = Object.FindFirstObjectByType<RescateVR.Gameplay.PatientHUD>(FindObjectsInactive.Include);
+        }
+
+        if (patientHUD != null)
+        {
+            patientHUD.SetHUDVisible(!visible);
         }
     }
 
