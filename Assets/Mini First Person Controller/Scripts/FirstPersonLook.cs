@@ -9,7 +9,7 @@ public class FirstPersonLook : MonoBehaviour
 
     Vector2 velocity;
     Vector2 frameVelocity;
-
+    private bool wasUnlockedLastFrame = false;
 
     void Reset()
     {
@@ -25,7 +25,20 @@ public class FirstPersonLook : MonoBehaviour
 
     void Update()
     {
-        if (Time.timeScale == 0f || Cursor.lockState != CursorLockMode.Locked) return;
+        if (Time.timeScale == 0f || Cursor.lockState != CursorLockMode.Locked)
+        {
+            frameVelocity = Vector2.zero;
+            wasUnlockedLastFrame = true;
+            return;
+        }
+
+        // Ignorar la espiga (delta spike) del ratón al volver a bloquear el cursor
+        if (wasUnlockedLastFrame)
+        {
+            wasUnlockedLastFrame = false;
+            frameVelocity = Vector2.zero;
+            return;
+        }
 
         // Get smooth velocity.
         Vector2 mouseDelta = new Vector2(Input.GetAxisRaw("Mouse X"), Input.GetAxisRaw("Mouse Y"));

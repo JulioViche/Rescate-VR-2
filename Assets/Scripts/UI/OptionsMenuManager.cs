@@ -67,22 +67,24 @@ namespace RescateVR.UI
             }
         }
 
-        void Start()
+        void Awake()
         {
-            // Auto-buscar cámara si no está asignada
             if (cameraLook == null)
             {
-                cameraLook = Object.FindObjectOfType<FirstPersonLook>();
+                cameraLook = Object.FindFirstObjectByType<FirstPersonLook>(FindObjectsInactive.Include);
             }
 
+            // Inicializar sliders en el 50% de su rango antes de que se muestre la UI en pantalla
+            InitializeSliderValues();
+        }
+
+        void Start()
+        {
             // Ocultar créditos al iniciar
             if (creditsPanel != null)
             {
                 creditsPanel.SetActive(false);
             }
-
-            // Inicializar valores por defecto de los Sliders
-            InitializeSliderValues();
 
             // Suscribir eventos OnValueChanged de los Sliders
             if (volumeSlider != null) volumeSlider.onValueChanged.AddListener(SetVolume);
@@ -92,20 +94,20 @@ namespace RescateVR.UI
 
         private void InitializeSliderValues()
         {
-            // 1. Sensibilidad: Toma el valor actual de la cámara para ponerlo justo en la mitad (50%) del Slider
+            // 1. Sensibilidad de Cámara: El valor actual (2.0) queda exactamente en el 50% (mitad del rango 0.1 a 4.0)
             float currentCamSens = (cameraLook != null) ? cameraLook.sensitivity : 2.0f;
             float savedSensitivity = PlayerPrefs.GetFloat("CameraSensitivity", currentCamSens);
 
             if (sensitivitySlider != null)
             {
                 sensitivitySlider.minValue = 0.1f;
-                sensitivitySlider.maxValue = currentCamSens * 2.0f; // La sensibilidad actual queda exactamente en el 50% (mitad)
+                sensitivitySlider.maxValue = currentCamSens * 2.0f; // 50% exacto para 2.0
                 sensitivitySlider.value = savedSensitivity;
             }
             SetSensitivity(savedSensitivity);
 
-            // 2. Volumen General Estándar (Predeterminado al 75% / 0.75)
-            float savedVolume = PlayerPrefs.GetFloat("MasterVolume", 0.75f);
+            // 2. Volumen General del Juego: Predeterminado al 100% (1.0) para coincidir con el audio nativo al iniciar
+            float savedVolume = PlayerPrefs.GetFloat("MasterVolume", 1.0f);
             if (volumeSlider != null)
             {
                 volumeSlider.minValue = 0f;
@@ -114,7 +116,7 @@ namespace RescateVR.UI
             }
             SetVolume(savedVolume);
 
-            // 3. Brillo de Pantalla (Escala con opacidad máxima del 80% / 0.8)
+            // 3. Brillo de Pantalla: Predeterminado a 1.0 (Brillo Normal / Alfa = 0) para coincidir 100% con la pantalla inicial sin saltos de luz
             float savedBrightness = PlayerPrefs.GetFloat("ScreenBrightness", 1.0f);
             if (brightnessSlider != null)
             {

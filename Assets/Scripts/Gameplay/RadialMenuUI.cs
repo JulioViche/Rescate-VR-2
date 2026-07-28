@@ -99,8 +99,8 @@ namespace RescateVR.Gameplay
 
         void Update()
         {
-            // Si el juego entra en pausa mientras el Menú Radial está abierto, cancelarlo inmediatamente
-            if (Time.timeScale == 0f)
+            // No procesar ni abrir Menú Radial si el Menú de Pausa u Opciones están activos en pantalla
+            if (IsPauseOrOptionsMenuActive())
             {
                 if (isOpen)
                 {
@@ -132,6 +132,7 @@ namespace RescateVR.Gameplay
         public void OpenMenu()
         {
             isOpen = true;
+            Time.timeScale = 0f; // Pausar tiempo del juego al abrir el Menú Radial
             SetPanelVisibility(true);
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
@@ -143,6 +144,26 @@ namespace RescateVR.Gameplay
             SetPanelVisibility(false);
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
+
+            // Restaurar tiempo de juego al cerrar (salvo si el Menú de Pausa u Opciones están activos)
+            if (!IsPauseOrOptionsMenuActive())
+            {
+                Time.timeScale = 1f;
+            }
+        }
+
+        private bool IsPauseOrOptionsMenuActive()
+        {
+            PauseManager pm = Object.FindFirstObjectByType<PauseManager>(FindObjectsInactive.Include);
+            if (pm != null)
+            {
+                if ((pm.pauseCanvas != null && pm.pauseCanvas.activeInHierarchy) ||
+                    (pm.optionsMenuPanel != null && pm.optionsMenuPanel.activeInHierarchy))
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         private void SetPanelVisibility(bool visible)
