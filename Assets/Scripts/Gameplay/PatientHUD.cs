@@ -396,5 +396,30 @@ namespace RescateVR.Gameplay
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
         }
+
+        /// <summary>
+        /// Reinicia la misión actual (vincular al botón 'Reiniciar' / 'Restart' del panel de derrota).
+        /// </summary>
+        public void OnRestartMission()
+        {
+            Time.timeScale = 1f;
+            UnityEngine.SceneManagement.SceneManager.LoadScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex);
+        }
+
+        /// <summary>
+        /// Regresa al Menú Principal (vincular al botón 'Menú Principal' / 'Main Menu' de los paneles de resultado).
+        /// </summary>
+        public void OnGoToMainMenu()
+        {
+            Time.timeScale = 1f;
+            if (Application.CanStreamedLevelBeLoaded("MainMenu"))
+            {
+                UnityEngine.SceneManagement.SceneManager.LoadScene("MainMenu");
+            }
+            else
+            {
+                UnityEngine.SceneManagement.SceneManager.LoadScene(0);
+            }
+        }
     }
 }
