@@ -80,8 +80,17 @@ namespace RescateVR.Gameplay
                 InjuryHandler injury = hit.collider.GetComponentInParent<InjuryHandler>();
                 if (injury != null)
                 {
+                    PatientState pState = injury.GetComponentInParent<PatientState>();
+                    bool isArrest = pState != null && pState.isInRespiratoryArrest;
+
                     string prompt = "";
-                    if (currentlyEquippedTool == MedicalToolType.Stethoscope)
+                    if (isArrest && injury.bodyPart == BodyPart.Torso)
+                    {
+                        int clicks = pState.currentCprClicks;
+                        int req = pState.requiredCprClicks;
+                        prompt = $"<color=red><b>¡PARO RESPIRATORIO!</b></color>\n(Con Guantes y Manos Libres)\nClics para RCP: {clicks}/{req}";
+                    }
+                    else if (currentlyEquippedTool == MedicalToolType.Stethoscope)
                     {
                         if (injury.bodyPart == BodyPart.Torso)
                             prompt = "[ Pecho del Paciente ]\n(Haz Clic para auscultar signos vitales)";
@@ -192,6 +201,28 @@ namespace RescateVR.Gameplay
 
         private void HandleInjuryInteraction(InjuryHandler injury)
         {
+            PatientState pState = injury.GetComponentInParent<PatientState>();
+
+            // 1. Prioridad Máxima: RCP si está en paro y apuntando al Torso
+            if (pState != null && pState.isInRespiratoryArrest && injury.bodyPart == BodyPart.Torso)
+            {
+                bool isHandsFree = currentlyEquippedTool == MedicalToolType.None || currentlyEquippedTool == MedicalToolType.Gloves;
+                if (isHandsFree && hasGlovesEquipped)
+                {
+                    bool success = pState.ApplyCPR();
+                    if (success && hud != null)
+                    {
+                        hud.ShowWarning("¡RCP EXITOSO!", "El paciente recuperó la respiración.", NotificationType.Info, 3f);
+                    }
+                }
+                else
+                {
+                    if (hud != null) hud.ShowWarning("¡ACCIÓN BLOQUEADA!", "Debes soltar tus herramientas (Empty Hands) y usar Guantes para el RCP.", NotificationType.Warning, 2f);
+                }
+                return;
+            }
+
+            // 2. Uso Normal de Herramientas
             if (currentlyEquippedTool == MedicalToolType.Gauze)
             {
                 if (injury.isTreated)

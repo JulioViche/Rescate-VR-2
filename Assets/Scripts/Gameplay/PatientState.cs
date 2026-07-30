@@ -53,6 +53,19 @@ namespace RescateVR.Gameplay
         public bool isVictory = false;
         public bool isPaused = false;
 
+        [Header("Eventos de Emergencia (RCP)")]
+        [Tooltip("Tiempo en segundos que tiene el jugador para hacer RCP antes de que muera")]
+        public float timeAllowedForCPR = 10f;
+        [Tooltip("Clicks necesarios en el pecho para salvar el paro respiratorio")]
+        public int requiredCprClicks = 5;
+
+        [HideInInspector] public bool isInRespiratoryArrest = false;
+        [HideInInspector] public float arrestTimer = 0f;
+        [HideInInspector] public int currentCprClicks = 0;
+        
+        private float arrestCheckTimer = 0f;
+        private float arrestImmunityTimer = 10f; // 10s de inmunidad al iniciar
+
         [Header("Eventos de Unity (Asignables en el Inspector o vía C#)")]
         public UnityEvent<float, float> OnBloodChanged;      // (currentBlood, maxBlood)
         public UnityEvent<float> OnTimeUpdated;              // (timeRemaining)
@@ -89,7 +102,61 @@ namespace RescateVR.Gameplay
         {
             if (isDead || isVictory || isPaused || Time.timeScale == 0f) return;
 
-            // 1. Procesar desangrado en tiempo real
+            // 1. Procesar Paro Respiratorio
+            if (isInRespiratoryArrest)
+            {
+                respirationRPM = 0; // Forzar asfixia
+                arrestTimer -= Time.deltaTime;
+                
+                // Forzar actualización del HUD para mostrar RPM en 0 si está auscultando
+                OnVitalsUpdated?.Invoke(heartRateBPM, respirationRPM, systolicBP, diastolicBP);
+
+                if (arrestTimer <= 0f)
+                {
+                    Die();
+                    return;
+                }
+            }
+            else
+            {
+                // Solo si no está en paro verificamos probabilidad
+                if (arrestImmunityTimer > 0f)
+                {
+                    arrestImmunityTimer -= Time.deltaTime;
+                }
+                else
+                {
+                    arrestCheckTimer += Time.deltaTime;
+                    if (arrestCheckTimer >= 5f)
+                    {
+                        arrestCheckTimer = 0f;
+                        
+                        // Buscar daño del Torso
+                        float torsoInternalDamage = 0f;
+                        foreach (var injury in registeredInjuries)
+                        {
+                            if (injury.bodyPart == BodyPart.Torso)
+                            {
+                                torsoInternalDamage = injury.internalInjuryLevel;
+                                break;
+                            }
+                        }
+
+                        // Si el daño del torso es alto, lanzar el "dado" (máx 15% de chance cada 5s)
+                        if (torsoInternalDamage > 20f)
+                        {
+                            float chance = (torsoInternalDamage / 100f) * 0.15f; 
+                            if (UnityEngine.Random.value < chance)
+                            {
+                                TriggerRespiratoryArrest();
+                                return; // Sale del frame para evitar curas cruzadas
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 2. Procesar desangrado en tiempo real
             if (currentBleedingRate > 0f)
             {
                 currentBlood -= currentBleedingRate * Time.deltaTime;
@@ -192,6 +259,39 @@ namespace RescateVR.Gameplay
             
             systolicBP = Mathf.Clamp(Mathf.RoundToInt(sys) + (!isDead ? UnityEngine.Random.Range(-3, 4) : 0), 0, 180);
             diastolicBP = Mathf.Clamp(Mathf.RoundToInt(dia) + (!isDead ? UnityEngine.Random.Range(-2, 3) : 0), 0, 120);
+
+            if (isInRespiratoryArrest) respirationRPM = 0; // Forzar de nuevo por si se actualizó
+        }
+
+        private void TriggerRespiratoryArrest()
+        {
+            isInRespiratoryArrest = true;
+            arrestTimer = timeAllowedForCPR;
+            currentCprClicks = 0;
+            respirationRPM = 0;
+            OnVitalsUpdated?.Invoke(heartRateBPM, respirationRPM, systolicBP, diastolicBP);
+
+            // Avisar globalmente al jugador con una alerta roja
+            PatientHUD hud = FindObjectOfType<PatientHUD>();
+            if (hud != null)
+            {
+                hud.ShowWarning("¡PARO RESPIRATORIO!", "¡El paciente dejó de respirar!\n(Equipa Guantes, suelta herramientas y haz RCP rápido en el pecho)", NotificationType.Danger, 5f);
+            }
+        }
+
+        public bool ApplyCPR()
+        {
+            if (!isInRespiratoryArrest) return false;
+
+            currentCprClicks++;
+            if (currentCprClicks >= requiredCprClicks)
+            {
+                isInRespiratoryArrest = false;
+                arrestImmunityTimer = 15f; // 15s de inmunidad para que el jugador respire
+                UpdateVitalsBasedOnBloodLoss(); // Restaurar signos
+                return true; // CPR Completado con éxito
+            }
+            return false; // Aún requiere más clics
         }
 
         private void Die()
