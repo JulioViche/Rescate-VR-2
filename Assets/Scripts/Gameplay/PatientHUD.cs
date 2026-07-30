@@ -214,8 +214,12 @@ namespace RescateVR.Gameplay
         public void UpdateTimerUI(float secondsRemaining)
         {
             if (timerText == null) return;
-            int minutes = Mathf.FloorToInt(secondsRemaining / 60f);
-            int seconds = Mathf.FloorToInt(secondsRemaining % 60f);
+            
+            // Multiplicar el tiempo visualmente por 5 según lo requerido
+            float visualSeconds = secondsRemaining * 5f;
+            
+            int minutes = Mathf.FloorToInt(visualSeconds / 60f);
+            int seconds = Mathf.FloorToInt(visualSeconds % 60f);
             timerText.text = $"{minutes:00}:{seconds:00}";
         }
 

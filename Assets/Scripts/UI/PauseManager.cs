@@ -32,10 +32,13 @@ public class PauseManager : MonoBehaviour
         }
     }
 
+    private RescateVR.Gameplay.PatientState patientState;
+
     void Start()
     {
         isPaused = false;
         Time.timeScale = 1f;
+        patientState = FindObjectOfType<RescateVR.Gameplay.PatientState>();
 
         if (pauseCanvas == null || filterOverlay == null)
         {
@@ -51,6 +54,12 @@ public class PauseManager : MonoBehaviour
 
     void Update()
     {
+        // Bloquear pausa si el paciente murió o ganaste (Juego terminado)
+        if (patientState != null && (patientState.isDead || patientState.isVictory))
+        {
+            return;
+        }
+
         // Si el menú de Opciones está abierto en pantalla, dejar que OptionsMenuManager controle la tecla Escape
         if (optionsMenuPanel != null && optionsMenuPanel.activeInHierarchy)
         {

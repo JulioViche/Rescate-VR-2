@@ -66,6 +66,33 @@ namespace RescateVR.Gameplay
         private float arrestCheckTimer = 0f;
         private float arrestImmunityTimer = 10f; // 10s de inmunidad al iniciar
 
+        [Header("Audio: Respiración")]
+        [Tooltip("AudioSource adjunto al paciente (preferiblemente en la cabeza o pecho)")]
+        public AudioSource breathingAudioSource;
+        
+        [Tooltip("Audio para respiración normal o lenta (RPM < 25)")]
+        public AudioClip normalBreathingClip;
+        [Tooltip("Volumen independiente para la respiración normal")]
+        [Range(0f, 1f)] public float normalVolume = 0.4f;
+        [Tooltip("Pitch (Tono/Velocidad) para la respiración normal")]
+        [Range(0.1f, 3f)] public float normalPitch = 1f;
+
+        [Tooltip("Audio para respiración agitada o taquipnea (RPM > 27)")]
+        public AudioClip heavyBreathingClip;
+        [Tooltip("Volumen independiente para la respiración agitada")]
+        [Range(0f, 1f)] public float heavyVolume = 1f;
+        [Tooltip("Pitch (Tono/Velocidad) para la respiración agitada")]
+        [Range(0.1f, 3f)] public float heavyPitch = 1f;
+
+        [Tooltip("Tiempo en segundos para hacer la transición suave (Crossfade) entre audios")]
+        public float audioFadeDuration = 1.5f;
+
+        private AudioSource audioSourceHeavy;
+        private float targetVolumeNormal = 0f;
+        private float targetVolumeHeavy = 0f;
+        private bool isHeavyBreathing = false;
+        private bool wasAudioPaused = false;
+
         [Header("Eventos de Unity (Asignables en el Inspector o vía C#)")]
         public UnityEvent<float, float> OnBloodChanged;      // (currentBlood, maxBlood)
         public UnityEvent<float> OnTimeUpdated;              // (timeRemaining)
@@ -92,6 +119,28 @@ namespace RescateVR.Gameplay
 
         void Start()
         {
+            // Inicializar AudioSources para el Crossfade
+            if (breathingAudioSource != null)
+            {
+                breathingAudioSource.clip = normalBreathingClip;
+                breathingAudioSource.loop = true;
+                breathingAudioSource.volume = 0f; // Empieza en 0 y hace fade-in en el Update
+                breathingAudioSource.pitch = normalPitch;
+                breathingAudioSource.Play();
+
+                // Crear un segundo AudioSource dinámico en el MISMO GameObject para evitar desfases 3D (espaciales)
+                audioSourceHeavy = breathingAudioSource.gameObject.AddComponent<AudioSource>();
+                audioSourceHeavy.spatialBlend = breathingAudioSource.spatialBlend;
+                audioSourceHeavy.minDistance = breathingAudioSource.minDistance;
+                audioSourceHeavy.maxDistance = breathingAudioSource.maxDistance;
+                audioSourceHeavy.rolloffMode = breathingAudioSource.rolloffMode;
+                audioSourceHeavy.clip = heavyBreathingClip;
+                audioSourceHeavy.loop = true;
+                audioSourceHeavy.volume = 0f;
+                audioSourceHeavy.pitch = heavyPitch;
+                audioSourceHeavy.Play();
+            }
+
             // Notificar estado inicial
             OnBloodChanged?.Invoke(currentBlood, maxBlood);
             OnTimeUpdated?.Invoke(timeRemaining);
@@ -100,7 +149,23 @@ namespace RescateVR.Gameplay
 
         void Update()
         {
-            if (isDead || isVictory || isPaused || Time.timeScale == 0f) return;
+            bool currentlyPaused = (isDead || isVictory || isPaused || Time.timeScale == 0f);
+
+            // Manejar pausa automática de los sonidos de respiración
+            if (currentlyPaused && !wasAudioPaused)
+            {
+                if (breathingAudioSource != null) breathingAudioSource.Pause();
+                if (audioSourceHeavy != null) audioSourceHeavy.Pause();
+                wasAudioPaused = true;
+            }
+            else if (!currentlyPaused && wasAudioPaused)
+            {
+                if (breathingAudioSource != null) breathingAudioSource.UnPause();
+                if (audioSourceHeavy != null) audioSourceHeavy.UnPause();
+                wasAudioPaused = false;
+            }
+
+            if (currentlyPaused) return;
 
             // 1. Procesar Paro Respiratorio
             if (isInRespiratoryArrest)
@@ -161,7 +226,15 @@ namespace RescateVR.Gameplay
             {
                 currentBlood -= currentBleedingRate * Time.deltaTime;
                 currentBlood = Mathf.Clamp(currentBlood, 0f, maxBlood);
+                
+#if UNITY_EDITOR
+                if (Application.isPlaying)
+                {
+                    OnBloodChanged?.Invoke(currentBlood, maxBlood);
+                }
+#else
                 OnBloodChanged?.Invoke(currentBlood, maxBlood);
+#endif
 
                 // Alterar signos vitales por pérdida de sangre (Shock)
                 UpdateVitalsBasedOnBloodLoss();
@@ -172,6 +245,8 @@ namespace RescateVR.Gameplay
                     return;
                 }
             }
+
+            UpdateBreathingAudio();
 
             // 2. Procesar temporizador de la ambulancia (5 minutos)
             timeRemaining -= Time.deltaTime;
@@ -252,13 +327,12 @@ namespace RescateVR.Gameplay
                 dia *= deathFade;
             }
 
-            // Aplicar fluctuaciones aleatorias leves (se detienen si llega a 0 absoluto)
-            bool isDead = bloodPercentage <= 0.01f;
-            heartRateBPM = Mathf.Clamp(Mathf.RoundToInt(hr) + (!isDead ? UnityEngine.Random.Range(-3, 4) : 0), 0, 200);
-            respirationRPM = Mathf.Clamp(Mathf.RoundToInt(resp) + (!isDead ? UnityEngine.Random.Range(-2, 3) : 0), 0, 45);
+            // Asignar los valores calculados basados puramente en las fórmulas (sin aleatoriedad)
+            heartRateBPM = Mathf.Clamp(Mathf.RoundToInt(hr), 0, 200);
+            respirationRPM = Mathf.Clamp(Mathf.RoundToInt(resp), 0, 45);
             
-            systolicBP = Mathf.Clamp(Mathf.RoundToInt(sys) + (!isDead ? UnityEngine.Random.Range(-3, 4) : 0), 0, 180);
-            diastolicBP = Mathf.Clamp(Mathf.RoundToInt(dia) + (!isDead ? UnityEngine.Random.Range(-2, 3) : 0), 0, 120);
+            systolicBP = Mathf.Clamp(Mathf.RoundToInt(sys), 0, 180);
+            diastolicBP = Mathf.Clamp(Mathf.RoundToInt(dia), 0, 120);
 
             if (isInRespiratoryArrest) respirationRPM = 0; // Forzar de nuevo por si se actualizó
         }
@@ -292,6 +366,62 @@ namespace RescateVR.Gameplay
                 return true; // CPR Completado con éxito
             }
             return false; // Aún requiere más clics
+        }
+
+        private void UpdateBreathingAudio()
+        {
+            if (breathingAudioSource == null || audioSourceHeavy == null) return;
+
+            // Si está muerto o en paro (0 RPM), apagar sonido
+            if (respirationRPM <= 0 || isDead)
+            {
+                targetVolumeNormal = 0f;
+                targetVolumeHeavy = 0f;
+            }
+            else
+            {
+                // Usar márgenes separados para evitar saltos (Histéresis)
+                // Umbral medio (25 - 27 RPM)
+                if (respirationRPM < 25)
+                {
+                    targetVolumeNormal = normalVolume;
+                    targetVolumeHeavy = 0f;
+                    
+                    // Si veníamos de respiración agitada, reiniciamos el tiempo del clip normal
+                    if (isHeavyBreathing)
+                    {
+                        isHeavyBreathing = false;
+                        breathingAudioSource.time = 0f;
+                        if (!breathingAudioSource.isPlaying) breathingAudioSource.Play();
+                    }
+                }
+                else if (respirationRPM > 27)
+                {
+                    targetVolumeNormal = 0f;
+                    targetVolumeHeavy = heavyVolume;
+                    
+                    // Si veníamos de respiración normal, reiniciamos el tiempo del clip agitado
+                    if (!isHeavyBreathing)
+                    {
+                        isHeavyBreathing = true;
+                        audioSourceHeavy.time = 0f;
+                        if (!audioSourceHeavy.isPlaying) audioSourceHeavy.Play();
+                    }
+                }
+                // Si está entre 25 y 27, mantiene el estado actual
+            }
+
+            // Suavizar el volumen de ambos audios gradualmente (Crossfade)
+            if (audioFadeDuration > 0f)
+            {
+                breathingAudioSource.volume = Mathf.MoveTowards(breathingAudioSource.volume, targetVolumeNormal, Time.deltaTime / audioFadeDuration);
+                audioSourceHeavy.volume = Mathf.MoveTowards(audioSourceHeavy.volume, targetVolumeHeavy, Time.deltaTime / audioFadeDuration);
+            }
+            else
+            {
+                breathingAudioSource.volume = targetVolumeNormal;
+                audioSourceHeavy.volume = targetVolumeHeavy;
+            }
         }
 
         private void Die()
