@@ -2,11 +2,26 @@ using UnityEngine;
 
 namespace RescateVR.Gameplay
 {
+    public enum BodyPart
+    {
+        Head,
+        Torso,
+        LeftArm,
+        RightArm,
+        LeftLeg,
+        RightLeg,
+        Generic
+    }
+
     /// <summary>
-    /// Componente adjuntado a partes del cuerpo del paciente que contienen heridas o laceraciones sangrantes.
+    /// Componente adjuntado a las Hitboxes del paciente para manejar las heridas regionales.
     /// </summary>
     public class InjuryHandler : MonoBehaviour
     {
+        [Header("Región Anatómica")]
+        [Tooltip("Parte del cuerpo a la que pertenece esta hitbox.")]
+        public BodyPart bodyPart = BodyPart.Generic;
+
         [Header("Datos de la Herida")]
         public string injuryName = "Laceración sangrante";
 
@@ -37,10 +52,14 @@ namespace RescateVR.Gameplay
                 patientState = Object.FindFirstObjectByType<PatientState>();
             }
 
-            if (patientState != null && bleedingLevel > 0f)
+            if (patientState != null)
             {
-                currentActiveRate = (bleedingLevel / 100f) * maxBleedingRatePerSecond;
-                patientState.AddBleedingRate(currentActiveRate);
+                patientState.RegisterInjury(this);
+                if (bleedingLevel > 0f)
+                {
+                    currentActiveRate = (bleedingLevel / 100f) * maxBleedingRatePerSecond;
+                    patientState.AddBleedingRate(currentActiveRate);
+                }
             }
 
             UpdateVisuals();

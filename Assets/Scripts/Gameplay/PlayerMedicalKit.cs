@@ -76,23 +76,41 @@ namespace RescateVR.Gameplay
 
             if (Physics.Raycast(ray, out RaycastHit hit, interactionDistance, interactionLayerMask))
             {
-                // 1. Verificar si está apuntando a una Herida (InjuryHandler)
+                // 1. Verificar si está apuntando a una Herida/Parte del Cuerpo (InjuryHandler)
                 InjuryHandler injury = hit.collider.GetComponentInParent<InjuryHandler>();
                 if (injury != null)
                 {
-                    string prompt = injury.isTreated
-                        ? $"[ Herida Tratada: {injury.injuryName} (Sangrado: 0%) ]"
-                        : $"[ {injury.injuryName} - Sangrado: {injury.bleedingLevel:F0}% ]\n(Haz Clic con Gasa para curar)";
+                    string prompt = "";
+                    if (currentlyEquippedTool == MedicalToolType.Stethoscope)
+                    {
+                        if (injury.bodyPart == BodyPart.Torso)
+                            prompt = "[ Pecho del Paciente ]\n(Haz Clic para auscultar signos vitales)";
+                        else
+                            prompt = $"[ {injury.bodyPart} ]\n(El estetoscopio solo puede usarse en el Tronco)";
+                    }
+                    else
+                    {
+                        string statusText = "";
+                        if (injury.bleedingLevel > 67f) statusText = "Hemorragia Abierta";
+                        else if (injury.bleedingLevel > 33f) statusText = "Parcialmente Contenida";
+                        else if (injury.bleedingLevel > 0f) statusText = "Sangrado Leve (Casi Controlada)";
+                        else statusText = "Sin heridas visibles";
+
+                        string status = injury.isTreated ? "Estable / Sin sangrado" : $"{statusText} ({injury.bleedingLevel:F0}%)";
+                        string iName = string.IsNullOrEmpty(injury.injuryName) ? "Zona intacta" : injury.injuryName;
+                        string actionPrompt = injury.isTreated ? "" : "\n(Usa Gasa para tratar)";
+                        prompt = $"[ {injury.bodyPart}: {iName} ]\nEstado: {status}{actionPrompt}";
+                    }
 
                     if (hud != null) hud.UpdateInteractionPrompt(prompt);
                     return;
                 }
 
-                // 2. Verificar si está apuntando al Paciente (PatientState)
+                // 2. Verificar si apuntó al Paciente (Fallback si el collider no tiene InjuryHandler)
                 PatientState patient = hit.collider.GetComponentInParent<PatientState>();
                 if (patient != null)
                 {
-                    string prompt = "[ Paciente Herido ]\n(Haz Clic con Estetoscopio para auscultar signos vitales)";
+                    string prompt = "[ Paciente Herido ]\n(Apunta a una parte específica del cuerpo)";
                     if (hud != null) hud.UpdateInteractionPrompt(prompt);
                     return;
                 }
@@ -176,16 +194,41 @@ namespace RescateVR.Gameplay
         {
             if (currentlyEquippedTool == MedicalToolType.Gauze)
             {
-                bool success = injury.TryTreatWithGauze(hasGlovesEquipped, out string message);
-                string title = success ? "¡HERIDA TRATADA!" : "¡ADVERTENCIA DE BIOSEGURIDAD!";
+                if (injury.isTreated)
+                {
+                    if (hud != null) hud.ShowWarning("¡ZONA ESTABLE!", "Esta parte del cuerpo no requiere tratamiento con gasa.", NotificationType.Warning, 2.5f);
+                    return;
+                }
+
+                // Curar en porciones del 25% por cada aplicación de gasa
+                bool success = injury.TryTreatWithGauze(hasGlovesEquipped, out string message, 25f);
+                string title = success ? "¡GASA APLICADA!" : "¡ADVERTENCIA DE BIOSEGURIDAD!";
+                if (success && injury.isTreated) title = "¡HERIDA SELLADA TOTALMENTE!";
+                
                 NotificationType type = success ? NotificationType.Info : NotificationType.Danger;
                 if (hud != null) hud.ShowWarning(title, message, type, 3.5f);
+            }
+            else if (currentlyEquippedTool == MedicalToolType.Stethoscope)
+            {
+                if (injury.bodyPart == BodyPart.Torso)
+                {
+                    PatientState patient = injury.GetComponentInParent<PatientState>();
+                    if (patient != null)
+                    {
+                        patient.AuscultateVitals();
+                        if (hud != null) hud.ShowWarning("¡AUSCULTACIÓN REALIZADA!", "Signos vitales del paciente actualizados en el HUD.", NotificationType.Info, 2.5f);
+                    }
+                }
+                else
+                {
+                    if (hud != null) hud.ShowWarning("¡USO INCORRECTO!", "El estetoscopio solo puede usarse en el pecho/tronco del paciente.", NotificationType.Warning, 3f);
+                }
             }
             else
             {
                 if (hud != null)
                 {
-                    hud.ShowWarning("¡HERRAMIENTA REQUERIDA!", "Para curar esta herida, selecciona la Gasa en el Menú Radial (Q/TAB).", NotificationType.Warning, 3f);
+                    hud.ShowWarning("¡HERRAMIENTA REQUERIDA!", "Selecciona una herramienta médica (Gasa o Estetoscopio) en el Menú Radial (Q/TAB).", NotificationType.Warning, 3f);
                 }
             }
         }
@@ -194,8 +237,7 @@ namespace RescateVR.Gameplay
         {
             if (currentlyEquippedTool == MedicalToolType.Stethoscope)
             {
-                patient.AuscultateVitals();
-                if (hud != null) hud.ShowWarning("¡AUSCULTACIÓN REALIZADA!", "Signos vitales del paciente actualizados en el HUD.", NotificationType.Info, 2.5f);
+                if (hud != null) hud.ShowWarning("¡USO INCORRECTO!", "Apunta específicamente al pecho/tronco del paciente para auscultar.", NotificationType.Warning, 3f);
             }
             else if (currentlyEquippedTool == MedicalToolType.None)
             {

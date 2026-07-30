@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -58,6 +59,17 @@ namespace RescateVR.Gameplay
         public UnityEvent<int, int, int, int> OnVitalsUpdated; // (bpm, rpm, sys, dia)
         public UnityEvent OnPatientDied;                     // Evento al morir (Derrota)
         public UnityEvent OnMissionVictory;                  // Evento al llegar ambulancia (Victoria)
+
+        // Lista de todas las hitboxes/heridas registradas
+        private List<InjuryHandler> registeredInjuries = new List<InjuryHandler>();
+
+        public void RegisterInjury(InjuryHandler injury)
+        {
+            if (!registeredInjuries.Contains(injury))
+            {
+                registeredInjuries.Add(injury);
+            }
+        }
 
         void Awake()
         {
@@ -133,21 +145,47 @@ namespace RescateVR.Gameplay
         private void UpdateVitalsBasedOnBloodLoss()
         {
             float bloodPercentage = currentBlood / maxBlood;
+            
+            // Valores base sanos
+            int baseHR = 75;
+            int baseResp = 16;
+            int baseSys = 120;
+            int baseDia = 80;
 
-            if (bloodPercentage < 0.4f) // Shock Severo
+            // Recopilar impacto por región anatómica
+            float headBleeding = 0f;
+            float torsoBleeding = 0f;
+            float extremitiesBleeding = 0f;
+
+            foreach (var injury in registeredInjuries)
             {
-                heartRateBPM = UnityEngine.Random.Range(130, 160);
-                respirationRPM = UnityEngine.Random.Range(28, 35);
-                systolicBP = 70;
-                diastolicBP = 40;
+                if (injury.bodyPart == BodyPart.Head) headBleeding += injury.bleedingLevel;
+                else if (injury.bodyPart == BodyPart.Torso) torsoBleeding += injury.bleedingLevel;
+                else extremitiesBleeding += injury.bleedingLevel; // Brazos y piernas
             }
-            else if (bloodPercentage < 0.7f) // Shock Moderado
+
+            // Daño en la cabeza afecta drásticamente la respiración
+            int respImpact = (int)(headBleeding * 0.1f) + (bloodPercentage < 0.7f ? 5 : 0) + (bloodPercentage < 0.4f ? 10 : 0);
+            
+            // Daño en el torso (órganos vitales) provoca caída severa de presión
+            int bpDrop = (int)(torsoBleeding * 0.25f) + (bloodPercentage < 0.7f ? 15 : 0) + (bloodPercentage < 0.4f ? 30 : 0);
+            
+            // Sangrado general y de extremidades obliga al corazón a latir más rápido para compensar (Taquicardia)
+            int hrRise = (int)(extremitiesBleeding * 0.2f) + (int)(torsoBleeding * 0.1f) + (bloodPercentage < 0.7f ? 25 : 0) + (bloodPercentage < 0.4f ? 55 : 0);
+
+            // Si el shock es MUY severo (<20%), el corazón empieza a fallar (bradicardia)
+            if (bloodPercentage < 0.2f)
             {
-                heartRateBPM = UnityEngine.Random.Range(100, 125);
-                respirationRPM = UnityEngine.Random.Range(22, 27);
-                systolicBP = 95;
-                diastolicBP = 60;
+                hrRise = -20;
+                respImpact = -10; // Falla respiratoria
             }
+
+            // Aplicar fluctuaciones aleatorias leves para realismo médico
+            heartRateBPM = Mathf.Clamp(baseHR + hrRise + UnityEngine.Random.Range(-5, 6), 30, 180);
+            respirationRPM = Mathf.Clamp(baseResp + respImpact + UnityEngine.Random.Range(-2, 3), 0, 45);
+            
+            systolicBP = Mathf.Clamp(baseSys - bpDrop + UnityEngine.Random.Range(-4, 5), 40, 180);
+            diastolicBP = Mathf.Clamp(baseDia - (bpDrop / 2) + UnityEngine.Random.Range(-3, 4), 20, 120);
         }
 
         private void Die()
