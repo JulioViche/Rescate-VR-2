@@ -36,6 +36,12 @@ namespace RescateVR.Gameplay
         public Image bottomIconImage;  // Sur: Estetoscopio
         public Image leftIconImage;    // Oeste: Guardar
 
+        [Header("Audio")]
+        [Tooltip("AudioSource para los efectos del Menú Radial (asegúrate de que exista uno en este objeto)")]
+        public AudioSource radialAudioSource;
+        [Tooltip("Sonido al abrir el menú radial")]
+        public AudioClip openMenuClip;
+
         private bool isOpen = false;
         private MedicalToolType currentHoverTool = MedicalToolType.None;
         private CanvasGroup canvasGroup;
@@ -136,6 +142,13 @@ namespace RescateVR.Gameplay
             SetPanelVisibility(true);
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
+
+            // Reproducir sonido de abrir (ignora la pausa del tiempo)
+            if (radialAudioSource != null && openMenuClip != null)
+            {
+                radialAudioSource.ignoreListenerPause = true;
+                radialAudioSource.PlayOneShot(openMenuClip);
+            }
         }
 
         public void CloseMenu()

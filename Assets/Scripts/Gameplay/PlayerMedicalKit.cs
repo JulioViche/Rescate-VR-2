@@ -227,16 +227,15 @@ namespace RescateVR.Gameplay
             {
                 if (injury.isTreated)
                 {
-                    if (hud != null) hud.ShowWarning("¡ZONA ESTABLE!", "Esta parte del cuerpo no requiere tratamiento con gasa.", NotificationType.Warning, 2.5f);
+                    if (hud != null) hud.ShowWarning("¡ZONA ESTABLE!", "Esta parte del cuerpo no requiere tratamiento con gasa.", NotificationType.WrongTool, 2.5f);
                     return;
                 }
 
-                // Curar en porciones del 25% por cada aplicación de gasa
                 bool success = injury.TryTreatWithGauze(hasGlovesEquipped, out string message, 25f);
                 string title = success ? "¡GASA APLICADA!" : "¡ADVERTENCIA DE BIOSEGURIDAD!";
                 if (success && injury.isTreated) title = "¡HERIDA SELLADA TOTALMENTE!";
                 
-                NotificationType type = success ? NotificationType.Info : NotificationType.Danger;
+                NotificationType type = success ? NotificationType.GauzeApplied : NotificationType.Danger;
                 if (hud != null) hud.ShowWarning(title, message, type, 3.5f);
             }
             else if (currentlyEquippedTool == MedicalToolType.Stethoscope)
@@ -247,12 +246,12 @@ namespace RescateVR.Gameplay
                     if (patient != null)
                     {
                         patient.AuscultateVitals();
-                        if (hud != null) hud.ShowWarning("¡AUSCULTACIÓN REALIZADA!", "Signos vitales del paciente actualizados en el HUD.", NotificationType.Info, 2.5f);
+                        if (hud != null) hud.ShowWarning("¡AUSCULTACIÓN REALIZADA!", "Signos vitales del paciente actualizados en el HUD.", NotificationType.StethoscopeSuccess, 2.5f);
                     }
                 }
                 else
                 {
-                    if (hud != null) hud.ShowWarning("¡USO INCORRECTO!", "El estetoscopio solo puede usarse en el pecho/tronco del paciente.", NotificationType.Warning, 3f);
+                    if (hud != null) hud.ShowWarning("¡USO INCORRECTO!", "El estetoscopio solo puede usarse en el pecho/tronco del paciente.", NotificationType.WrongTool, 3f);
                 }
             }
             else
@@ -268,11 +267,11 @@ namespace RescateVR.Gameplay
         {
             if (currentlyEquippedTool == MedicalToolType.Stethoscope)
             {
-                if (hud != null) hud.ShowWarning("¡USO INCORRECTO!", "Apunta específicamente al pecho/tronco del paciente para auscultar.", NotificationType.Warning, 3f);
+                if (hud != null) hud.ShowWarning("¡USO INCORRECTO!", "Apunta específicamente al pecho/tronco del paciente para auscultar.", NotificationType.WrongTool, 3f);
             }
             else if (currentlyEquippedTool == MedicalToolType.None)
             {
-                if (hud != null) hud.ShowWarning("¡BOTIQUÍN MÉDICO!", "Abre el menú radial (tecla Q o TAB) para seleccionar una herramienta médica.", NotificationType.Warning, 2.5f);
+                if (hud != null) hud.ShowWarning("¡BOTIQUÍN MÉDICO!", "Abre el menú radial (tecla Q o TAB) para seleccionar una herramienta médica.", NotificationType.WrongTool, 2.5f);
             }
         }
 

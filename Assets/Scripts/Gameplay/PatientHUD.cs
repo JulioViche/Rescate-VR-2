@@ -6,9 +6,12 @@ namespace RescateVR.Gameplay
 {
     public enum NotificationType
     {
-        Info,     // Bueno / Éxito (Verde)
-        Warning,  // Advertencia / Información (Amarillo)
-        Danger    // Malo / Error de Bioseguridad (Rojo)
+        Info,               // Bueno / Éxito (Verde)
+        Warning,            // Advertencia / Información (Amarillo)
+        Danger,             // Malo / Error de Bioseguridad (Rojo)
+        StethoscopeSuccess, // Especial: Auscultación exitosa (Usa color Info)
+        WrongTool,          // Especial: Uso incorrecto de herramienta (Usa color Warning)
+        GauzeApplied        // Especial: Gasa aplicada correctamente (Usa color Info)
     }
 
     /// <summary>
@@ -77,6 +80,29 @@ namespace RescateVR.Gameplay
         [Header("Paneles de Resultado final")]
         public GameObject victoryPanel;
         public GameObject defeatPanel;
+
+        [Header("Audio de Notificaciones")]
+        [Tooltip("AudioSource para reproducir los sonidos de advertencias del HUD")]
+        public AudioSource notificationAudioSource;
+        [Tooltip("Sonido para mensajes verdes (Éxito)")]
+        public AudioClip infoAudioClip;
+        [Tooltip("Sonido para mensajes amarillos (Advertencia/Error leve)")]
+        public AudioClip warningAudioClip;
+        [Tooltip("Sonido para mensajes rojos (Peligro crítico)")]
+        public AudioClip dangerAudioClip;
+        
+        [Header("Efectos Especiales de Herramientas")]
+        [Tooltip("Efecto de latido/respiración al usar el estetoscopio correctamente")]
+        public AudioClip stethoscopeAudioClip;
+        [Tooltip("Efecto de error al usar una herramienta donde no se debe")]
+        public AudioClip wrongToolAudioClip;
+        [Tooltip("Efecto al aplicar gasa con éxito")]
+        public AudioClip gauzeAudioClip;
+        [Tooltip("Efecto al equipar o cambiar una herramienta (ej. al cerrar el radial)")]
+        public AudioClip toolEquippedAudioClip;
+
+        private MedicalToolType currentTool = MedicalToolType.None;
+        private bool currentGloves = false;
 
         void Awake()
         {
@@ -238,6 +264,17 @@ namespace RescateVR.Gameplay
 
         public void UpdateEquippedToolUI(MedicalToolType tool, bool hasGloves)
         {
+            // Detectar si hubo un cambio real en el inventario/manos
+            bool toolChanged = (tool != currentTool) || (hasGloves != currentGloves);
+            currentTool = tool;
+            currentGloves = hasGloves;
+
+            // Reproducir sonido si cambió algo
+            if (toolChanged && notificationAudioSource != null && toolEquippedAudioClip != null)
+            {
+                notificationAudioSource.PlayOneShot(toolEquippedAudioClip);
+            }
+
             // 1. Actualizar Texto de la Herramienta Equipada (Solo el nombre)
             if (equippedToolText != null)
             {
@@ -306,17 +343,41 @@ namespace RescateVR.Gameplay
         public void ShowWarning(string title, string message, NotificationType type = NotificationType.Warning, float duration = 3.0f)
         {
             Color targetColor = warningColor;
+            AudioClip clipToPlay = null;
+
             switch (type)
             {
                 case NotificationType.Info:
                     targetColor = infoColor;
+                    clipToPlay = infoAudioClip;
                     break;
                 case NotificationType.Warning:
                     targetColor = warningColor;
+                    clipToPlay = warningAudioClip;
                     break;
                 case NotificationType.Danger:
                     targetColor = dangerColor;
+                    clipToPlay = dangerAudioClip;
                     break;
+                case NotificationType.StethoscopeSuccess:
+                    targetColor = infoColor;
+                    clipToPlay = stethoscopeAudioClip != null ? stethoscopeAudioClip : infoAudioClip;
+                    break;
+                case NotificationType.GauzeApplied:
+                    targetColor = infoColor;
+                    clipToPlay = gauzeAudioClip != null ? gauzeAudioClip : infoAudioClip;
+                    break;
+                case NotificationType.WrongTool:
+                    targetColor = warningColor;
+                    // Si no tiene clip especial asignado, usa el normal amarillo
+                    clipToPlay = wrongToolAudioClip != null ? wrongToolAudioClip : warningAudioClip;
+                    break;
+            }
+
+            if (notificationAudioSource != null && clipToPlay != null)
+            {
+                // PlayOneShot permite que los sonidos se solapen si saltan varios rápidos
+                notificationAudioSource.PlayOneShot(clipToPlay);
             }
 
             if (warningTitleText != null)

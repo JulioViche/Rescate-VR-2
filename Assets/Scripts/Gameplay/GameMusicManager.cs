@@ -12,11 +12,16 @@ namespace RescateVR.Audio
     {
         [Header("Configuración de Audio")]
         public AudioSource musicSource;
+        [Tooltip("AudioSource opcional para el sonido ambiental (se silenciará en menús)")]
+        public AudioSource ambientSource;
 
         [Header("Canciones")]
         public AudioClip gameplayMusic;
         public AudioClip victoryMusic;
         public AudioClip defeatMusic;
+        
+        [Header("Sonido Ambiental (Opcional)")]
+        public AudioClip ambientSound;
 
         private PatientState patientState;
         private bool isGameOver = false;
@@ -39,23 +44,31 @@ namespace RescateVR.Audio
                 musicSource.loop = true;
                 musicSource.Play();
             }
+
+            // Iniciar el Sonido Ambiental
+            if (ambientSource != null && ambientSound != null)
+            {
+                ambientSource.clip = ambientSound;
+                ambientSource.loop = true;
+                ambientSource.Play();
+            }
         }
 
         void Update()
         {
-            if (musicSource == null) return;
-
             // Si el juego NO ha terminado, controlamos la pausa de la música
             // basándonos en si el PauseManager detuvo el tiempo (Time.timeScale == 0).
             if (!isGameOver)
             {
-                if (Time.timeScale == 0f && musicSource.isPlaying)
+                if (Time.timeScale == 0f)
                 {
-                    musicSource.Pause();
+                    if (musicSource != null && musicSource.isPlaying) musicSource.Pause();
+                    if (ambientSource != null && ambientSource.isPlaying) ambientSource.Pause();
                 }
-                else if (Time.timeScale > 0f && !musicSource.isPlaying)
+                else if (Time.timeScale > 0f)
                 {
-                    musicSource.UnPause();
+                    if (musicSource != null && !musicSource.isPlaying) musicSource.UnPause();
+                    if (ambientSource != null && !ambientSource.isPlaying) ambientSource.UnPause();
                 }
             }
         }
@@ -63,6 +76,9 @@ namespace RescateVR.Audio
         private void PlayDefeatMusic()
         {
             isGameOver = true;
+            
+            if (ambientSource != null) ambientSource.Stop(); // Apagar ambiente
+            
             if (musicSource != null && defeatMusic != null)
             {
                 musicSource.Stop();
@@ -75,6 +91,9 @@ namespace RescateVR.Audio
         private void PlayVictoryMusic()
         {
             isGameOver = true;
+            
+            if (ambientSource != null) ambientSource.Stop(); // Apagar ambiente
+
             if (musicSource != null && victoryMusic != null)
             {
                 musicSource.Stop();
