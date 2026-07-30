@@ -144,48 +144,54 @@ namespace RescateVR.Gameplay
 
         private void UpdateVitalsBasedOnBloodLoss()
         {
-            float bloodPercentage = currentBlood / maxBlood;
+            // Variables Base del Modelo Matemático
+            float vSangre = 1f - (currentBlood / maxBlood); // 0.0 (sano) a 1.0 (desangrado total)
             
-            // Valores base sanos
-            int baseHR = 75;
-            int baseResp = 16;
-            int baseSys = 120;
-            int baseDia = 80;
-
-            // Recopilar impacto por región anatómica
-            float headBleeding = 0f;
-            float torsoBleeding = 0f;
-            float extremitiesBleeding = 0f;
-
+            float sumInternas = 0f;
             foreach (var injury in registeredInjuries)
             {
-                if (injury.bodyPart == BodyPart.Head) headBleeding += injury.bleedingLevel;
-                else if (injury.bodyPart == BodyPart.Torso) torsoBleeding += injury.bleedingLevel;
-                else extremitiesBleeding += injury.bleedingLevel; // Brazos y piernas
+                sumInternas += injury.internalInjuryLevel;
+            }
+            float vInternas = Mathf.Clamp01(sumInternas / 100f); // 0.0 a 1.0 (tope de 100% como daño interno crítico)
+
+            float vTiempo = Mathf.Clamp((missionDuration - timeRemaining) / 60f, 0f, 10f); // Minutos transcurridos
+
+            // Valores base sanos
+            float baseHR = 75f;
+            float baseResp = 16f;
+            float baseSys = 120f;
+            float baseDia = 80f;
+
+            // Fórmulas Médicas
+            float hr = baseHR + (vSangre * 60f) + (vInternas * 30f) + (vTiempo * 5f);
+            float resp = baseResp + (vSangre * 15f) + (vInternas * 10f) + (vTiempo * 2f);
+            float sys = baseSys - (vSangre * 60f) - (vInternas * 20f) - (vTiempo * 5f);
+            float dia = baseDia - (vSangre * 40f) - (vInternas * 15f) - (vTiempo * 3f);
+
+            if (vInternas > 0.8f) // Colapso mecánico de la respiración por trauma masivo
+            {
+                resp -= (vInternas - 0.8f) * 50f;
             }
 
-            // Daño en la cabeza afecta drásticamente la respiración
-            int respImpact = (int)(headBleeding * 0.1f) + (bloodPercentage < 0.7f ? 5 : 0) + (bloodPercentage < 0.4f ? 10 : 0);
-            
-            // Daño en el torso (órganos vitales) provoca caída severa de presión
-            int bpDrop = (int)(torsoBleeding * 0.25f) + (bloodPercentage < 0.7f ? 15 : 0) + (bloodPercentage < 0.4f ? 30 : 0);
-            
-            // Sangrado general y de extremidades obliga al corazón a latir más rápido para compensar (Taquicardia)
-            int hrRise = (int)(extremitiesBleeding * 0.2f) + (int)(torsoBleeding * 0.1f) + (bloodPercentage < 0.7f ? 25 : 0) + (bloodPercentage < 0.4f ? 55 : 0);
-
-            // Si el shock es MUY severo (<20%), el corazón empieza a fallar (bradicardia)
+            // Cuando la sangre es menor a 20%, los órganos comienzan a apagarse
+            float bloodPercentage = currentBlood / maxBlood;
             if (bloodPercentage < 0.2f)
             {
-                hrRise = -20;
-                respImpact = -10; // Falla respiratoria
+                // Multiplicador que va de 1.0 (en 20% sangre) hasta 0.0 (en 0% sangre)
+                float deathFade = bloodPercentage / 0.2f; 
+                hr *= deathFade;
+                resp *= deathFade;
+                sys *= deathFade;
+                dia *= deathFade;
             }
 
-            // Aplicar fluctuaciones aleatorias leves para realismo médico
-            heartRateBPM = Mathf.Clamp(baseHR + hrRise + UnityEngine.Random.Range(-5, 6), 30, 180);
-            respirationRPM = Mathf.Clamp(baseResp + respImpact + UnityEngine.Random.Range(-2, 3), 0, 45);
+            // Aplicar fluctuaciones aleatorias leves (se detienen si llega a 0 absoluto)
+            bool isDead = bloodPercentage <= 0.01f;
+            heartRateBPM = Mathf.Clamp(Mathf.RoundToInt(hr) + (!isDead ? UnityEngine.Random.Range(-3, 4) : 0), 0, 200);
+            respirationRPM = Mathf.Clamp(Mathf.RoundToInt(resp) + (!isDead ? UnityEngine.Random.Range(-2, 3) : 0), 0, 45);
             
-            systolicBP = Mathf.Clamp(baseSys - bpDrop + UnityEngine.Random.Range(-4, 5), 40, 180);
-            diastolicBP = Mathf.Clamp(baseDia - (bpDrop / 2) + UnityEngine.Random.Range(-3, 4), 20, 120);
+            systolicBP = Mathf.Clamp(Mathf.RoundToInt(sys) + (!isDead ? UnityEngine.Random.Range(-3, 4) : 0), 0, 180);
+            diastolicBP = Mathf.Clamp(Mathf.RoundToInt(dia) + (!isDead ? UnityEngine.Random.Range(-2, 3) : 0), 0, 120);
         }
 
         private void Die()

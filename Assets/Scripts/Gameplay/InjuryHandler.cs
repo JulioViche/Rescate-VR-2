@@ -32,6 +32,10 @@ namespace RescateVR.Gameplay
         [Tooltip("Porcentaje de sangre que pierde el paciente por segundo si la herida está a nivel máximo (100%)")]
         public float maxBleedingRatePerSecond = 1.5f;
 
+        [Tooltip("Nivel de daño interno/fracturas asociadas a esta zona (0 = sin daño interno, 100 = trauma interno crítico). La gasa no cura este daño.")]
+        [Range(0f, 100f)]
+        public float internalInjuryLevel = 0f;
+
         [Header("Efectos Visuales")]
         [Tooltip("Partículas de sangre (opcional)")]
         public ParticleSystem bloodParticleEffect;
